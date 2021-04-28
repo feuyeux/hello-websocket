@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket示例</title>
+    <script src="//cdn.bootcss.com/angular.js/1.5.6/angular.min.js"></script>
+    <script src="https://cdn.bootcss.com/sockjs-client/1.1.4/sockjs.min.js"></script>
+    <script src="https://cdn.bootcss.com/stomp.js/2.3.3/stomp.min.js"></script>
+    <script type="text/javascript">
+	/*<![CDATA[*/
+	var stompClient = null;
+	var app = angular.module('app', []);
+	app.controller('MainController', function($rootScope, $scope, $http) {
+		$scope.data = {
+			//连接状态
+			connected : false,
+			//消息
+			message : '',
+			rows : []
+		};
+
+		$scope.send = function() {
+			stompClient.send("/nls-ws/send", {}, JSON.stringify({
+				'message' : $scope.data.message
+			}));
+		}
+
+		//连接
+		$scope.connect = function() {
+			var socket = new SockJS('/nls-ws-ep');
+			stompClient = Stomp.over(socket);
+			stompClient.connect({}, function(frame) {
+				// 注册发送消息
+				stompClient.subscribe('/topic/send', function(msg) {
+					$scope.data.rows.push(JSON.parse(msg.body));
+					$scope.data.connected = true;
+					$scope.$apply();
+				});
+				// 注册推送时间回调
+				stompClient.subscribe('/topic/callback', function(msg) {
+					$scope.data.time = msg.body;
+					$scope.data.connected = true;
+					$scope.$apply();
+				});
+
+				$scope.data.connected = true;
+				$scope.$apply();
+			});
+		};
+
+		$scope.disconnect = function() {
+			if (stompClient != null) {
+				stompClient.disconnect();
+			}
+			$scope.data.connected = false;
+		}
+	});
+	/*]]>*/
+
+    </script>
+</head>
+<body ng-app="app" ng-controller="MainController">
+<label>WebSocket连接状态:</label>
+<button type="button" ng-disabled="data.connected" ng-click="connect()">连接</button>
+<button type="button" ng-click="disconnect()" ng-disabled="!data.connected">断开</button>
+<br/>
+<br/>
+<div ng-show="data.connected">
+    <label>服务器时间(服务器主动推送):</label><label>{{data.time}}</label> <br/> <br/>
+    <input type="text" ng-model="data.message" placeholder="请输入内容..."/>
+    <button ng-click="send()" type="button">发送</button>
+    <br/> <br/> 消息列表： <br/>
+    <table border="1">
+        <thead>
+        <tr>
+            <th>时间</th>
+            <th>内容</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr ng-repeat="row in data.rows">
+            <td>{{row.date}}</td>
+            <td>{{row.message}}</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>
