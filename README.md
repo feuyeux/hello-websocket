@@ -1,7 +1,7 @@
 ## hello websocket
 
 ```bash
-mvn spring-boot:run
+mvn clean spring-boot:run
 ```
 
 ```bash

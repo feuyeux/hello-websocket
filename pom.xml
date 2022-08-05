@@ -9,7 +9,12 @@
     <packaging>jar</packaging>
 
     <properties>
-        <springboot.version>2.4.5</springboot.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <springboot.version>2.7.2</springboot.version>
     </properties>
 
     <dependencies>
@@ -41,14 +46,7 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
-                <configuration>
-                    <release>15</release>
-                </configuration>
+                <version>${springboot.version}</version>
             </plugin>
         </plugins>
     </build>
