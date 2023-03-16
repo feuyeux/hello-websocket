@@ -1,4 +1,4 @@
-package hello
+package common
 
 type Inbound struct {
 	Id   int64  `json:"id"`

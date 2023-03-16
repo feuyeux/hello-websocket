@@ -26,7 +26,7 @@ import org.feuyeux.websocket.info.EchoRequest;
 @Slf4j
 public class EchoClient {
 
-  private static final URI uri = URI.create(String.format("ws://%s:%d/websocket", host, port));
+  private static final URI uri = URI.create(String.format("ws://%s:%d/websocket/java_client", host, port));
   private Channel ch;
   private static final EventLoopGroup group = new NioEventLoopGroup();
 
@@ -41,8 +41,7 @@ public class EchoClient {
         null,
         false,
         EmptyHttpHeaders.INSTANCE,
-        1280000
-    );
+        1280000);
     final WebSocketClientHandler handler = new WebSocketClientHandler(handShaker);
 
     b.group(group)

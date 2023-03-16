@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	hello "hello-ws"
+	"hello-websocket/common"
+
 	"log"
 	"net/http"
 	"time"
@@ -42,13 +43,13 @@ func echoHandler(w http.ResponseWriter, request *http.Request) {
 			}
 		case websocket.BinaryMessage: //二进制数据
 			start := time.Now()
-			var in hello.Inbound
+			var in common.Inbound
 			err = json.Unmarshal(messageData, &in)
 			if err != nil {
 				log.Println("unmarshal:", err)
 			}
 			log.Printf("recv: %v", in)
-			out, err := json.Marshal(hello.Outbound{Id: in.Id, Data: in.Data, Elapse: time.Since(start).Milliseconds()})
+			out, err := json.Marshal(common.Outbound{Id: in.Id, Data: in.Data, Elapse: time.Since(start).Milliseconds()})
 			if err != nil {
 				log.Println("marshal:", err)
 			}
@@ -69,6 +70,6 @@ func main() {
 	flag.Parse()
 	log.SetFlags(0)
 	router := mux.NewRouter()
-	router.HandleFunc("/echo/{name}", echoHandler)
+	router.HandleFunc("/websocket/{name}", echoHandler)
 	log.Fatal(http.ListenAndServe(*addr, router))
 }

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/gorilla/websocket"
-	hello "hello-ws"
+	"hello-websocket/common"
 	"log"
 	"net/url"
 	"os"
@@ -21,14 +21,19 @@ func main() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
-	u := url.URL{Scheme: "ws", Host: *addr, Path: "/echo/me"}
+	u := url.URL{Scheme: "ws", Host: *addr, Path: "/websocket/go_client"}
 	log.Printf("connecting to %s", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
-	defer c.Close()
+	defer func() {
+		err := c.Close()
+		if err != nil {
+			log.Printf("fail to close:%v", err)
+		}
+	}()
 
 	done := make(chan struct{})
 
@@ -45,7 +50,7 @@ func main() {
 			case websocket.TextMessage: //文本数据
 				log.Printf("recv: %s", string(messageData))
 			case websocket.BinaryMessage: //二进制数据
-				var out hello.Outbound
+				var out common.Outbound
 				err = json.Unmarshal(messageData, &out)
 				if err != nil {
 					log.Println("unmarshal:", err)
@@ -71,17 +76,17 @@ func main() {
 				return
 			}
 
-			in, _ := json.Marshal(hello.Inbound{Id: 81, Data: "わかった"})
+			in, _ := json.Marshal(common.Inbound{Id: 81, Data: "わかった"})
 			_ = c.WriteMessage(websocket.BinaryMessage, in)
-			in, _ = json.Marshal(hello.Inbound{Id: 82, Data: "알았어"})
+			in, _ = json.Marshal(common.Inbound{Id: 82, Data: "알았어"})
 			_ = c.WriteMessage(websocket.BinaryMessage, in)
-			in, _ = json.Marshal(hello.Inbound{Id: 44, Data: "Got it"})
+			in, _ = json.Marshal(common.Inbound{Id: 44, Data: "Got it"})
 			_ = c.WriteMessage(websocket.BinaryMessage, in)
-			in, _ = json.Marshal(hello.Inbound{Id: 33, Data: "Je l'ai"})
+			in, _ = json.Marshal(common.Inbound{Id: 33, Data: "Je l'ai"})
 			_ = c.WriteMessage(websocket.BinaryMessage, in)
-			in, _ = json.Marshal(hello.Inbound{Id: 7, Data: "Понял"})
+			in, _ = json.Marshal(common.Inbound{Id: 7, Data: "Понял"})
 			_ = c.WriteMessage(websocket.BinaryMessage, in)
-			in, _ = json.Marshal(hello.Inbound{Id: 30, Data: "Το έπιασα"})
+			in, _ = json.Marshal(common.Inbound{Id: 30, Data: "Το έπιασα"})
 			_ = c.WriteMessage(websocket.BinaryMessage, in)
 		case <-interrupt:
 			log.Println("interrupt")
