@@ -11,3 +11,5 @@ sh server_build.sh && sh server_run.sh
 ```sh
 sh client_build.sh && sh client_run.sh
 ```
+
+> TODO: <https://eclipse-ee4j.github.io/tyrus/>
