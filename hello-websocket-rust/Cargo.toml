@@ -1,0 +1,22 @@
+[package]
+name = "hello_websocket"
+version = "0.1.0"
+authors = ["feuyeux <feuyeux@gmail.com>"]
+edition = "2018"
+
+
+[dependencies]
+futures-channel = "0.3.28"
+futures-util = { version = "0.3.28", default-features = false, features = ["sink", "std"] }
+tokio = { version = "1.0.0",  features = ["full"] }
+tokio-tungstenite = "0.20.1"
+tungstenite = "0.20.1"
+url = "2.4.1"
+
+[[bin]]
+name = "hello-server"
+path = "src/hello_server.rs"
+
+[[bin]]
+name = "hello-client"
+path = "src/hello_client.rs"
