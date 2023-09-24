@@ -1,75 +1,71 @@
 package main
 
 import (
-	"encoding/json"
-	"flag"
 	"fmt"
 	"hello-websocket/common"
-
 	"log"
+	"net"
 	"net/http"
+	"sync"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
 
-var addr = flag.String("addr", "localhost:2088", "http service address")
+var conns = sync.Map{}
+var names = sync.Map{}
 
-var upgrader = websocket.Upgrader{} // use default options
-
-func echoHandler(w http.ResponseWriter, request *http.Request) {
-	c, err := upgrader.Upgrade(w, request, nil)
-	if err != nil {
-		log.Print("upgrade:", err)
-		return
+func main() {
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
 	}
-	defer c.Close()
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		clientAddr, clientPort, _ := net.SplitHostPort(r.RemoteAddr)
+		websocket, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		key := clientAddr + "-" + clientPort
+		conns.Store(key, websocket)
+		name := r.Header.Get(common.ClientName)
+		names.Store(key, name)
+		fmt.Printf("Websocket Connected(%s:%s) X=%s\n", clientAddr, clientPort, name)
+		listen(websocket)
+	})
+	http.ListenAndServe(":8080", nil)
+}
+
+func listen(conn *websocket.Conn) {
 	for {
-		vars := mux.Vars(request)
-		name := vars["name"]
-		messageType, messageData, err := c.ReadMessage()
+		clientAddr, clientPort, _ := net.SplitHostPort(conn.RemoteAddr().String())
+		key := clientAddr + "-" + clientPort
+		// read a message
+		messageType, messageContent, err := conn.ReadMessage()
 		if err != nil {
 			log.Println("read:", err)
-			break
+			conns.Delete(key)
+			names.Delete(key)
+			return
 		}
-		// log.Printf("recv: %s", message)
-		switch messageType {
-		case websocket.TextMessage: //文本数据
-			fmt.Println(string(messageData), name)
-			err = c.WriteMessage(websocket.TextMessage, messageData)
-			if err != nil {
-				log.Println("write:", err)
+		//printTime(err, messageContent)
+		name, _ := names.Load(key)
+		fmt.Printf("%s(%s:%s):%s", name, clientAddr, clientPort, messageContent)
+		conns.Range(func(k, v interface{}) bool {
+			if key != k {
+				c := v.(*websocket.Conn)
+				messageResponse := fmt.Sprintf("[Golang] [%s]:%s", name, messageContent)
+				if err := c.WriteMessage(messageType, []byte(messageResponse)); err != nil {
+					log.Println(err)
+				}
 			}
-		case websocket.BinaryMessage: //二进制数据
-			start := time.Now()
-			var in common.Inbound
-			err = json.Unmarshal(messageData, &in)
-			if err != nil {
-				log.Println("unmarshal:", err)
-			}
-			log.Printf("recv: %v", in)
-			out, err := json.Marshal(common.Outbound{Id: in.Id, Data: in.Data, Elapse: time.Since(start).Milliseconds()})
-			if err != nil {
-				log.Println("marshal:", err)
-			}
-			err = c.WriteMessage(websocket.BinaryMessage, out)
-			if err != nil {
-				log.Println("write:", err)
-			}
-		case websocket.CloseMessage: //关闭
-		case websocket.PingMessage: //Ping
-		case websocket.PongMessage: //Pong
-		default:
-
-		}
+			return true
+		})
 	}
 }
 
-func main() {
-	flag.Parse()
-	log.SetFlags(0)
-	router := mux.NewRouter()
-	router.HandleFunc("/websocket/{name}", echoHandler)
-	log.Fatal(http.ListenAndServe(*addr, router))
+func printTime(messageContent []byte) {
+	timeReceive := time.Now()
+	fmt.Printf("%+v\n", timeReceive)
 }

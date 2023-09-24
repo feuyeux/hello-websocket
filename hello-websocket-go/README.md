@@ -1,5 +1,9 @@
 # Hello websocket
 
+## dependent libs
+
+<github.com/gorilla/websocket>
+
 ```sh
 go mod init hello-websocket
 go env -w GO111MODULE=on
@@ -15,7 +19,11 @@ go run server/echo_server.go
 ## run client
 
 ```sh
-go run client/echo_client.go
+go run client/echo_client.go Eric
 ```
 
-The server includes a simple web client. To use the client, open <http://127.0.0.1:8080> in the browser and follow the instructions on the page.
+```sh
+go run client/echo_client.go Caroline
+```
+
+![](hello-websocket.png)
