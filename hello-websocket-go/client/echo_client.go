@@ -31,7 +31,7 @@ func main() {
 
 	input := make(chan string, 1)
 	go getInput(input)
-	host := "localhost:8080"
+	host := "localhost:9898"
 	URL := url.URL{Scheme: "ws", Host: host}
 	firstArg := os.Args[1]
 	header := http.Header{}

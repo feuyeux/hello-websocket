@@ -16,9 +16,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.feuyeux.websocket.codec.EchoResponseCodec;
 import org.feuyeux.websocket.info.EchoResponse;
 
-/**
- * @author Stephen Mallette (http://stephen.genoprime.com)
- */
 @Slf4j
 public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> {
 
@@ -57,20 +54,19 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
       handshakeFuture.setSuccess();
       return;
     }
-
-    if (msg instanceof FullHttpResponse) {
-      final FullHttpResponse response = (FullHttpResponse) msg;
+    if (msg instanceof FullHttpResponse response) {
       throw new Exception(
-          "Unexpected FullHttpResponse (getStatus=" + response.getStatus() + ", content="
-              + response.content().toString(CharsetUtil.UTF_8) + ')');
+          "Unexpected FullHttpResponse (getStatus="
+              + response.status()
+              + ", content="
+              + response.content().toString(CharsetUtil.UTF_8)
+              + ')');
     }
 
     final WebSocketFrame frame = (WebSocketFrame) msg;
-    if (frame instanceof TextWebSocketFrame) {
-      final TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
+    if (frame instanceof TextWebSocketFrame textFrame) {
       log.info("received[T]:{}", textFrame.text());
-    } else if (frame instanceof BinaryWebSocketFrame) {
-      final BinaryWebSocketFrame binaryFrame = (BinaryWebSocketFrame) frame;
+    } else if (frame instanceof BinaryWebSocketFrame binaryFrame) {
       ByteBuf byteBuf = binaryFrame.content();
       EchoResponse echoResponse = EchoResponseCodec.decode(byteBuf);
       log.info("received[B]:{}", echoResponse);
@@ -78,9 +74,8 @@ public class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> 
   }
 
   @Override
-  public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause)
-      throws Exception {
-    cause.printStackTrace();
+  public void exceptionCaught(final ChannelHandlerContext ctx, final Throwable cause) {
+    log.error("", cause);
     if (!handshakeFuture.isDone()) {
       handshakeFuture.setFailure(cause);
     }

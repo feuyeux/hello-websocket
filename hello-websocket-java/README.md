@@ -1,5 +1,7 @@
 # hello websocket java(netty)
 
+[Java API for WebSocket JSR 356](https://jcp.org/en/jsr/detail?id=356)
+
 ## build & run server
 
 ```sh

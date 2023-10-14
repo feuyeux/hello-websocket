@@ -1,7 +1,7 @@
 const WebSocket = require("ws");
 
 // start the server and specify the port number
-const port = 2088;
+const port = 9898;
 const wss = new WebSocket.Server({ port: port });
 
 console.log(`[WebSocket] Starting WebSocket server on localhost:${port}`);

@@ -11,9 +11,14 @@
   <properties>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
+    <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
     <log4j.version>2.20.0</log4j.version>
+    <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
     <lombok.version>1.18.30</lombok.version>
-    <netty.version>4.1.89.Final</netty.version>
+    <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
+    <netty.version>4.1.100.Final</netty.version>
+    <!-- https://mvnrepository.com/artifact/com.coveo/fmt-maven-plugin -->
+    <fmt-maven-plugin.version>2.21.1</fmt-maven-plugin.version>
   </properties>
 
   <dependencies>
@@ -23,19 +28,11 @@
       <version>${netty.version}</version>
     </dependency>
 
+    <!-- SLF4J Bridge slf4j to log4j2 -->
+    <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-slf4j-impl -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
       <artifactId>log4j-slf4j-impl</artifactId>
-      <version>${log4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-api</artifactId>
-      <version>${log4j.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-core</artifactId>
       <version>${log4j.version}</version>
     </dependency>
 
@@ -70,6 +67,23 @@
             <phase>package</phase>
             <goals>
               <goal>single</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>com.spotify.fmt</groupId>
+        <artifactId>fmt-maven-plugin</artifactId>
+        <version>${fmt-maven-plugin.version}</version>
+        <configuration>
+          <skipTestSourceDirectory>true</skipTestSourceDirectory>
+          <skipSortingImports>false</skipSortingImports>
+          <style>google</style>
+        </configuration>
+        <executions>
+          <execution>
+            <goals>
+              <goal>format</goal>
             </goals>
           </execution>
         </executions>

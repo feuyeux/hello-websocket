@@ -14,7 +14,11 @@ public class TextInboundHandler extends SimpleChannelInboundHandler<TextWebSocke
       final String x = textWebSocketFrame.text();
       log.info("received[T]: {}", x);
       final String[] y = x.split(":");
-      ctx.writeAndFlush(new TextWebSocketFrame(y[0] + ":" + y[1].toUpperCase()));
+      if (y.length > 1) {
+        ctx.writeAndFlush(new TextWebSocketFrame(y[0] + ":" + y[1].toUpperCase()));
+      } else {
+        ctx.writeAndFlush(new TextWebSocketFrame(y[0].toUpperCase()));
+      }
     } catch (Exception e) {
       log.error("", e);
     }

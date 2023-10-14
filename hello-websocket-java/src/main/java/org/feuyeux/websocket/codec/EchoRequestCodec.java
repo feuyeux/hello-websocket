@@ -1,6 +1,5 @@
 package org.feuyeux.websocket.codec;
 
-
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import org.feuyeux.websocket.info.EchoRequest;

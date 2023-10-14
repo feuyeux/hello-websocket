@@ -1,11 +1,11 @@
-# hello websocket springboot
+# hello websocket java(springboot)
 
 ```bash
 mvn clean spring-boot:run
 ```
 
 ```bash
-open http://localhost:8080
+open http://localhost:9898
 ```
 
 <!-- MD033 -->

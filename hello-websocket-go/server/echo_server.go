@@ -34,7 +34,7 @@ func main() {
 		fmt.Printf("Websocket Connected(%s:%s) X=%s\n", clientAddr, clientPort, name)
 		listen(websocket)
 	})
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":9898", nil)
 }
 
 func listen(conn *websocket.Conn) {

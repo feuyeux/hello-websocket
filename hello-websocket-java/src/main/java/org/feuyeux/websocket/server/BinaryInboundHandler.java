@@ -14,16 +14,19 @@ import org.feuyeux.websocket.info.EchoResponse;
 public class BinaryInboundHandler extends SimpleChannelInboundHandler<BinaryWebSocketFrame> {
 
   @Override
-  protected void channelRead0(ChannelHandlerContext ctx,
-      BinaryWebSocketFrame binaryWebSocketFrame) {
+  protected void channelRead0(
+      ChannelHandlerContext ctx, BinaryWebSocketFrame binaryWebSocketFrame) {
     try {
       long start = System.currentTimeMillis();
       ByteBuf reqByteBuf = binaryWebSocketFrame.content();
       EchoRequest echoRequest = EchoRequestCodec.decode(reqByteBuf);
       log.info("received[B]: {}", echoRequest);
 
-      EchoResponse echoResponse = new EchoResponse(echoRequest.getId(),
-          (System.currentTimeMillis() - start), echoRequest.getData().toUpperCase());
+      EchoResponse echoResponse =
+          new EchoResponse(
+              echoRequest.getId(),
+              (System.currentTimeMillis() - start),
+              echoRequest.getData().toUpperCase());
       ByteBuf respByteBuf = EchoResponseCodec.encode(echoResponse);
       ctx.writeAndFlush(new BinaryWebSocketFrame(respByteBuf));
     } catch (Exception e) {

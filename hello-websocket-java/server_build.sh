@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
+set -e
 export DEPLOY_NAME=hello.websocket.java.server
-export MAIN_CLASS=org.feuyeux.websocket.EchoServer
-# export JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-19.jdk/Contents/Home
+export MAIN_CLASS=org.feuyeux.websocket.HelloServer
 mvn clean package
 
 if [ ! -d "bin" ]; then

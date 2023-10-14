@@ -14,7 +14,7 @@ class _MyAppState extends State<MyApp> {
   // Localhost for android - 10.0.2.2
   // Localhost for iOS - 127.0.0.1
   final IOWebSocketChannel channel =
-      IOWebSocketChannel.connect('ws://127.0.0.1:2088');
+      IOWebSocketChannel.connect('ws://127.0.0.1:9898');
 
   var userInput;
   List messages = [];
