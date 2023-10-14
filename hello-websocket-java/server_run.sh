@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-java -jar bin/server.jar
+java -jar bin/hello-server.jar
