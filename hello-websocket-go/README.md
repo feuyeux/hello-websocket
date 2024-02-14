@@ -26,4 +26,4 @@ go run client/echo_client.go Eric
 go run client/echo_client.go Caroline
 ```
 
-![](hello-websocket.png)
+![hello-websocket](hello-websocket.png)

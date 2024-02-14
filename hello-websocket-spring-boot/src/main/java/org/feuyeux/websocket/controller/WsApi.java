@@ -1,5 +1,6 @@
-package com.example;
+package org.feuyeux.websocket.controller;
 
+import org.feuyeux.websocket.pojo.SocketMessage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.SendTo;
@@ -13,10 +14,6 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-/**
- * @author 六翁 lu.hl@alibaba-inc.com
- * @date 2017/10/01
- */
 @Controller
 @EnableScheduling
 public class WsApi {

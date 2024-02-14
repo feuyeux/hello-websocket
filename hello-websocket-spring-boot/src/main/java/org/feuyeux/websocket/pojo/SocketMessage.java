@@ -1,4 +1,4 @@
-package com.example;
+package org.feuyeux.websocket.pojo;
 
 public class SocketMessage {
 
