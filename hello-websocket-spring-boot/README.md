@@ -2,6 +2,8 @@
 
 # hello websocket java(spring-boot)
 
+## tomcat-embed & websocket
+
 | spring-boot-starter-tomcat | spring-cloud     | spring-core | tomcat-embed-core | Servlet Spec | WebSocket Spec | JDK |
 |:---------------------------|:-----------------|:------------|:------------------|:-------------|:---------------|:----|
 |                            |                  |             | 11.0.x            | 6.1          | 2.2(TBD)       | 21+ |
@@ -15,6 +17,8 @@
 - [servlet 6.0](https://mvnrepository.com/artifact/jakarta.servlet/jakarta.servlet-api/6.0)
 - [websocket 2.1](https://mvnrepository.com/artifact/jakarta.websocket/jakarta.websocket-api/2.1)
 
+## run
+
 ```bash
 mvn clean spring-boot:run
 ```
@@ -25,3 +29,8 @@ open http://localhost:8080
 
 <img src="test.png" style="width:500px;"  alt="hello-websocket"/>
 
+## reference
+- https://docs.spring.io/spring-framework/reference/web/websocket.html
+    - https://docs.spring.io/spring-framework/reference/web/websocket/server.html
+    - https://docs.spring.io/spring-framework/reference/web/websocket/fallback.html
+- https://github.com/aliakh/demo-spring-websocket/tree/master/websocket-sockjs-stomp-server

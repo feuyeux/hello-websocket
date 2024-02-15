@@ -12,7 +12,10 @@ public class WebSocketMessageBrokerConfig implements WebSocketMessageBrokerConfi
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/hello-ws-ep").withSockJS();
+      registry.addEndpoint("/hello-sockjs").withSockJS()
+          .setStreamBytesLimit(512 * 1024)
+          .setHttpMessageCacheSize(1000)
+          .setDisconnectDelay(30 * 1000);
     }
 
     @Override
