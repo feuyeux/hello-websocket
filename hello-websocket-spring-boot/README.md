@@ -28,7 +28,7 @@ mvn clean spring-boot:run
 open http://localhost:8080
 ```
 
-<img src="test.png" style="width:500px;"  alt="hello-websocket"/>
+<img src="doc/test.png" style="width:500px;"  alt="hello-websocket"/>
 
 ## reference
 
