@@ -1,4 +1,4 @@
-# hello websocket java(netty)
+# Hello Websocket java(netty)
 
 [Java API for WebSocket JSR 356](https://jcp.org/en/jsr/detail?id=356)
 

@@ -1,4 +1,4 @@
-# Hello websocket
+# Hello Websocket golang
 
 ## dependent libs
 

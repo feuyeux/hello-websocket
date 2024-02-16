@@ -1,0 +1,7 @@
+spring.main.banner-mode: off
+logging:
+  level:
+    root: INFO
+#    org.springframework.web.socket: TRACE
+#    org.springframework.messaging.simp: TRACE
+server.port: 8080

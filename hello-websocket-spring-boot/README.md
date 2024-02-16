@@ -1,6 +1,7 @@
 <!-- markdown-disable MD033 MD045 -->
+<!-- markdownlint-disable MD033 -->
 
-# hello websocket java(spring-boot)
+# Hello Websocket java(spring-boot)
 
 ## tomcat-embed & websocket
 
@@ -30,7 +31,10 @@ open http://localhost:8080
 <img src="test.png" style="width:500px;"  alt="hello-websocket"/>
 
 ## reference
-- https://docs.spring.io/spring-framework/reference/web/websocket.html
-    - https://docs.spring.io/spring-framework/reference/web/websocket/server.html
-    - https://docs.spring.io/spring-framework/reference/web/websocket/fallback.html
-- https://github.com/aliakh/demo-spring-websocket/tree/master/websocket-sockjs-stomp-server
+
+- [WebSockets](https://docs.spring.io/spring-framework/reference/web/websocket.html)
+  - [WebSocket API](https://docs.spring.io/spring-framework/reference/web/websocket/server.html)
+  - [SockJS Fallback](https://docs.spring.io/spring-framework/reference/web/websocket/fallback.html)
+  - [STOMP](https://docs.spring.io/spring-framework/reference/web/websocket/stomp.html)
+- <https://github.com/aliakh/demo-spring-websocket/blob/master/README.md>
+- <https://medium.com/@liakh-aliaksandr>
