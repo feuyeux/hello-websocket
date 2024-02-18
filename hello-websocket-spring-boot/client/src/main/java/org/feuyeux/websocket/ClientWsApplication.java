@@ -9,7 +9,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 public class ClientWsApplication {
     public static void main(String[] args) {
          new SpringApplicationBuilder(ClientWsApplication.class)
-                //.web(WebApplicationType.NONE)
+                .web(WebApplicationType.NONE)
                 .run(args);
     }
 }
