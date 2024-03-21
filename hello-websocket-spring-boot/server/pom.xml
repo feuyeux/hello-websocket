@@ -24,7 +24,11 @@
             <artifactId>spring-boot-starter-websocket</artifactId>
             <version>${springboot.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-buffer</artifactId>
+            <version>4.1.104.Final</version>
+        </dependency>
         <!-- HTML templates https://www.thymeleaf.org/ -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

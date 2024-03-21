@@ -1,6 +1,6 @@
 package org.feuyeux.websocket.config;
 
-import org.feuyeux.websocket.handler.ServerWebSocketHandler;
+import org.feuyeux.websocket.handler.ServerTextWebSocketHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.WebSocketHandler;
@@ -36,6 +36,6 @@ public class WebSocketSockJsConfig implements WebSocketConfigurer {
 
     @Bean
     public WebSocketHandler webSocketSockJsHandler() {
-        return new ServerWebSocketHandler();
+        return new ServerTextWebSocketHandler();
     }
 }

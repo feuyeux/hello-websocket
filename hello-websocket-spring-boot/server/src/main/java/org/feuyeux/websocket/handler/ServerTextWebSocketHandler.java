@@ -15,9 +15,9 @@ import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 
-public class ServerWebSocketHandler extends TextWebSocketHandler {
+public class ServerTextWebSocketHandler extends TextWebSocketHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(ServerWebSocketHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(ServerTextWebSocketHandler.class);
 
     private final Set<WebSocketSession> sessions = new CopyOnWriteArraySet<>();
 

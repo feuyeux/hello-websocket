@@ -7,14 +7,15 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-public class ClientWebSocketHandler extends TextWebSocketHandler {
+public class ClientTextWebSocketHandler extends TextWebSocketHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(ClientWebSocketHandler.class);
-    private final String type;
+    private static final Logger logger = LoggerFactory.getLogger(ClientTextWebSocketHandler.class);
+    private String type;
 
-    public ClientWebSocketHandler(String type) {
+    public void setType(String type) {
         this.type = type;
     }
 
@@ -35,8 +36,9 @@ public class ClientWebSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    public void handleTextMessage(WebSocketSession session, TextMessage message) {
-        logger.info("Client received[{}]: {}", type, message.getPayload());
+    public void handleTextMessage(WebSocketSession session, TextMessage message) throws IOException {
+        String payload = message.getPayload();
+        logger.info("Client received[{}]: {}", type, payload);
     }
 
     @Override
