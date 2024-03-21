@@ -10,19 +10,21 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 public class WebSocketStompConfig implements WebSocketMessageBrokerConfigurer {
 
-    @Override
-    public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // registers a STOMP over WebSocket endpoint with SockJS fallback
-        registry.addEndpoint("/websocket-sockjs-stomp").withSockJS()
-                .setStreamBytesLimit(512 * 1024)
-                .setHttpMessageCacheSize(1000)
-                .setDisconnectDelay(30 * 1000);
-    }
+  @Override
+  public void registerStompEndpoints(StompEndpointRegistry registry) {
+    // registers a STOMP over WebSocket endpoint with SockJS fallback
+    registry
+        .addEndpoint("/websocket-sockjs-stomp")
+        .withSockJS()
+        .setStreamBytesLimit(512 * 1024)
+        .setHttpMessageCacheSize(1000)
+        .setDisconnectDelay(30 * 1000);
+  }
 
-    @Override
-    public void configureMessageBroker(MessageBrokerRegistry registry) {
-        registry.enableSimpleBroker("/queue", "/topic");
-        registry.setApplicationDestinationPrefixes("/hello");
-        registry.setPreservePublishOrder(true);
-    }
+  @Override
+  public void configureMessageBroker(MessageBrokerRegistry registry) {
+    registry.enableSimpleBroker("/queue", "/topic");
+    registry.setApplicationDestinationPrefixes("/hello");
+    registry.setPreservePublishOrder(true);
+  }
 }

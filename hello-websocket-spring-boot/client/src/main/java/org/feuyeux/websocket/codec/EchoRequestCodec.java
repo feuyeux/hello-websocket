@@ -6,21 +6,21 @@ import org.feuyeux.websocket.pojo.EchoRequest;
 
 public class EchoRequestCodec {
 
-    public static ByteBuf encode(EchoRequest echoRequest) {
-        ByteBuf byteBuf = Unpooled.buffer();
-        byteBuf.writeLong(echoRequest.getId());
-        byteBuf.writeBytes(echoRequest.getData().getBytes());
-        return byteBuf;
-    }
+  public static ByteBuf encode(EchoRequest echoRequest) {
+    ByteBuf byteBuf = Unpooled.buffer();
+    byteBuf.writeLong(echoRequest.getId());
+    byteBuf.writeBytes(echoRequest.getData().getBytes());
+    return byteBuf;
+  }
 
-    public static EchoRequest decode(ByteBuf byteBuf) {
-        long id = byteBuf.readLong();
-        int currentIndex = byteBuf.readerIndex();
-        int endIndex = byteBuf.writerIndex();
+  public static EchoRequest decode(ByteBuf byteBuf) {
+    long id = byteBuf.readLong();
+    int currentIndex = byteBuf.readerIndex();
+    int endIndex = byteBuf.writerIndex();
 
-        byte[] dst = new byte[endIndex - currentIndex];
-        byteBuf.readBytes(dst);
-        String data = new String(dst);
-        return new EchoRequest(id, data);
-    }
+    byte[] dst = new byte[endIndex - currentIndex];
+    byteBuf.readBytes(dst);
+    String data = new String(dst);
+    return new EchoRequest(id, data);
+  }
 }

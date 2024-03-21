@@ -3,6 +3,18 @@
 
 # Hello Websocket java(spring-boot)
 
+## API
+
+- WebSocket
+  - "/websocket/text"
+  - "/websocket/binary"
+- WebSocket SockJs
+  - "/websocket-sockjs"
+- WebSocket Stomp
+  - "/websocket-sockjs-stomp"
+  - Broker "/queue", "/topic"
+  - DestinationPrefixes "/hello"
+
 ## tomcat-embed & websocket
 
 | spring-boot-starter-tomcat | spring-cloud     | spring-core | tomcat-embed-core | Servlet Spec | WebSocket Spec | JDK |

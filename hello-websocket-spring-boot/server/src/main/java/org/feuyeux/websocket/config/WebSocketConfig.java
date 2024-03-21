@@ -13,20 +13,19 @@ import org.springframework.web.socket.server.standard.ServletServerContainerFact
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
-    @Bean
-    public ServletServerContainerFactoryBean createWebSocketContainer() {
-        ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean();
-        // set the timeout to 2min
-        container.setMaxSessionIdleTimeout(120000L);
-        container.setMaxTextMessageBufferSize(8192);
-        container.setMaxBinaryMessageBufferSize(8192);
-        return container;
-    }
+  @Bean
+  public ServletServerContainerFactoryBean createWebSocketContainer() {
+    ServletServerContainerFactoryBean container = new ServletServerContainerFactoryBean();
+    // set the timeout to 2min
+    container.setMaxSessionIdleTimeout(120000L);
+    container.setMaxTextMessageBufferSize(8192);
+    container.setMaxBinaryMessageBufferSize(8192);
+    return container;
+  }
 
-    @Override
-    public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(new ServerTextWebSocketHandler(), "/websocket/text");
-        registry.addHandler(new ServerBinaryWebSocketHandler(), "/websocket/binary");
-    }
-
+  @Override
+  public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
+    registry.addHandler(new ServerTextWebSocketHandler(), "/websocket/text");
+    registry.addHandler(new ServerBinaryWebSocketHandler(), "/websocket/binary");
+  }
 }

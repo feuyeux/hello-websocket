@@ -2,8 +2,7 @@ package org.feuyeux.websocket.pojo;
 
 public class SocketMessage {
 
-    public String message;
+  public String message;
 
-    public String date;
-
+  public String date;
 }

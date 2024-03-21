@@ -6,9 +6,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 
 @SpringBootApplication
 public class ClientWsApplication {
-    public static void main(String[] args) {
-        new SpringApplicationBuilder(ClientWsApplication.class)
-                .web(WebApplicationType.NONE)
-                .run(args);
-    }
+  public static void main(String[] args) {
+    new SpringApplicationBuilder(ClientWsApplication.class).web(WebApplicationType.NONE).run(args);
+  }
 }
