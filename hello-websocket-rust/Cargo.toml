@@ -9,7 +9,7 @@ edition = "2018"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 tokio = { version = "1.23.0",  features = ["full"] }
-tokio-tungstenite = "0.20.1"
+tokio-tungstenite = "0.21.0"
 tungstenite = "0.21.0"
 url = "2.4.1"
 
