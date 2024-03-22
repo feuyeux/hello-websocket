@@ -5,5 +5,4 @@ cd "$(
 )/" || exit
 set -e
 
-git submodule update --remote
 git add -A && git commit -m "up" && git pull && git push
