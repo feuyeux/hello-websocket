@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Build Rust
       run: cargo build --manifest-path hello-websocket-rust/Cargo.toml 
     - name: Run Rust tests
