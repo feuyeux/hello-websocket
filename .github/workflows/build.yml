@@ -29,7 +29,3 @@ jobs:
       run: mvn -B package --file hello-websocket-java/springboot/server/pom.xml
     - name: Build client with Maven
       run: mvn -B package --file hello-websocket-java/springboot/client/pom.xml
-    - name: Publish to GitHub Packages Apache Maven
-      run: mvn deploy
-      env:
-        GITHUB_TOKEN_REF: ${{ secrets.GH_PAT_FOR_ACTIONS_TOKEN }}
