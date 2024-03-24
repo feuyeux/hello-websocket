@@ -28,7 +28,7 @@
 - [tomcat-embed-core 10.1.18](https://mvnrepository.com/artifact/org.apache.tomcat.embed/tomcat-embed-core/10.1.18)
 - [servlet 6.1](https://mvnrepository.com/artifact/jakarta.servlet/jakarta.servlet-api/6.1)
 - [servlet 6.0](https://mvnrepository.com/artifact/jakarta.servlet/jakarta.servlet-api/6.0)
-- [websocket 2.1](https://mvnrepository.com/artifact/jakarta.websocket/jakarta.websocket-api/2.1)
+- [websocket 2.1](https://mvnrepository.com/artifact/jakarta.websocket/jakarta.websocket-api/2.1.1)
 
 ## run
 
