@@ -55,13 +55,16 @@ async fn handle_connection(raw_stream: TcpStream, addr: SocketAddr, peer_map: Pe
 
     // broadcast incoming
     let broadcast_incoming = incoming.try_for_each(|msg| {
-        println!("Received a message from {}: {}", addr, msg.to_text().unwrap());
+        let msg_value = msg.to_text().unwrap();
+        println!("Received a message from {}: {}", addr, msg_value);
         let peers = peer_map.lock().unwrap();
         let names = name_map.lock().unwrap();
 
         // We want to broadcast the message to everyone except ourselves.
         let broadcast_recipients =
-            peers.iter().filter(|(peer_addr, _)| peer_addr != &&addr).map(|(_, ws_sink)| ws_sink);
+            peers.iter()
+                .filter(|(peer_addr, _)| peer_addr != &&addr)
+                .map(|(_, ws_sink)| ws_sink);
         for recipient in broadcast_recipients {
             let client_name = names.get(&&addr).unwrap();
             let message = format!("[Rust] [{}]:{}", client_name.to_str().expect("C"), msg.clone());
