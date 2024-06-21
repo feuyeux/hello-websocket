@@ -84,3 +84,5 @@ migrate_working_dir/
 
 #RUST
 Cargo.lock
+
+hello-websocket-python/ws_env
