@@ -19,14 +19,15 @@ logger.addHandler(console)
 async def connect_to_server():
     async with websockets.connect("ws://localhost:58789") as websocket:
         session = {
-            'client_id': "client_" + str(random.randint(1, 100)),
+            'client_id': "client_" + str(random.randint(100, 1000)),
         }
         await send_hello(websocket, session)
+
         while True:
             await send_random_number(websocket, session)
             response = await websocket.recv()
             response_dict = json.loads(response)
-            await handle_resp(websocket, session, response_dict)
+            await handle_resp(websocket, response_dict)
 
 
 async def send_hello(websocket, session):
@@ -46,7 +47,6 @@ async def send_hello(websocket, session):
 
 
 async def send_random_number(websocket, session):
-    await asyncio.sleep(5)
     random_msg = {
         "header": {
             "userId": session['client_id'],
@@ -57,10 +57,13 @@ async def send_random_number(websocket, session):
             "content": str(random.randint(1, 100))
         }
     }
-    await websocket.send(json.dumps(random_msg))
+    request = json.dumps(random_msg)
+    logger.info("Sending Random number:%s", request)
+    await websocket.send(request)
+    await asyncio.sleep(5)
 
 
-async def handle_resp(websocket, session, message):
+async def handle_resp(websocket, message):
     start_time = time.time()
     resp_type = message['body']['type']
     seq = message['header'].get('seq')
@@ -80,7 +83,7 @@ async def handle_resp(websocket, session, message):
         if content == 'bonjour':
             logger.info("Received Bonjour from server at %s", datetime.now())
         else:
-            logger.info("Received Hash value: %s", content)
+            logger.info("Received Random hash: %s", message)
     else:
         logger.info("Received timestamp from server: %s", content)
 
@@ -88,9 +91,11 @@ async def handle_resp(websocket, session, message):
 async def main():
     try:
         await connect_to_server()
-    except websockets.exceptions.ConnectionClosed:
+    except (asyncio.exceptions.CancelledError, websockets.exceptions.ConnectionClosed) as e:
         pass
+    finally:
         logger.info("Hello Websocket client stopped")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

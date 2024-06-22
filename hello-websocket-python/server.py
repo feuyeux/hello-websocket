@@ -28,7 +28,6 @@ async def handle_client(websocket, path):
         while True:
             await ping(websocket, session_id)
             await timestamp(websocket)
-            logger.info("Waiting for message from %s", session_id)
             message = await websocket.recv()
             message_dict = json.loads(message)
             if message_dict['body']['type'] == 'pong':
@@ -62,8 +61,7 @@ async def handle_req(websocket, message, session_id):
         await websocket.send(json.dumps(bonjour_msg))
     else:
         hash_value = hashlib.sha256(content.encode()).hexdigest()
-        logger.info("Received random number %s from %s[%s]",
-                    content, session_id, user_id)
+        logger.info("Received random number %s",message)
         hash_msg = {
             "header": {
                 "latency": int((time.time() - start_time) * 1000),
@@ -97,7 +95,7 @@ async def timestamp(websocket):
 async def ping(websocket, session_id):
     await asyncio.sleep(1)
     now = time.time()
-    if now - sessions[session_id]['last_pong'] > 3 * 60 * 1000:
+    if now - sessions[session_id]['last_pong'] > 60 * 1000:
         logger.info("Client [%s] is not responding(now:%d, last pong:%d), closing connection",
                     session_id, sessions[session_id]['last_pong'])
         del sessions[session_id]
