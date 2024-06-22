@@ -1,48 +1,82 @@
 import asyncio
-import websockets
+import json
 import time
+import websockets
+import hashlib
+import logging
+from datetime import datetime
 
-active_connections = set()
+# 创建一个logger
+logger = logging.getLogger('websocket-server')
+logger.setLevel(logging.INFO)
+console = logging.StreamHandler()
+console.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s [%(levelname)s] - %(message)s')
+console.setFormatter(formatter)
+logger.addHandler(console)
+sessions = {}
 
 
-async def broadcast_time():
-    """定期向所有活跃连接广播当前时间"""
-    while True:
-        current_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
-        for websocket in active_connections.copy():
-            try:
-                await websocket.send(current_time)
-            except websockets.exceptions.ConnectionClosedError:
-                # 如果连接已关闭，则从集合中移除
-                active_connections.remove(websocket)
-        await asyncio.sleep(5)  # 每5秒广播一次
-
-
-async def pingpong(websocket, path):
-    """处理每个连接的消息"""
+async def handle_client(websocket, path):
     session_id = id(websocket)
-    active_connections.add(websocket)
+    sessions[session_id] = {'last_ping': time.time(), 'seq': 0}
 
     try:
-        async for message in websocket:
-            if message == "hello":
-                await websocket.send("bonjour")
-            elif message == "ping":
-                print(f"Received ping from session {session_id}")
-                await websocket.send("pong")
-            else:
-                print(f"Unknown message: {message} from session {session_id}")
-    finally:
-        active_connections.remove(websocket)
+        await ping_pong(websocket, session_id)
+        while True:
+            message = await websocket.recv()
+            message_dict = json.loads(message)
+            if message_dict['body']['type'] == 'req':
+                await handle_req(websocket, message_dict, session_id)
+    except websockets.exceptions.ConnectionClosedOK:
+        logger.info("Client [%s] disconnected", session_id)
+        del sessions[session_id]
+
+
+async def ping_pong(websocket, session_id):
+    while True:
+        start_time = time.time()
+        ping_msg = {"head": {"userId": "server", "seq": sessions[session_id]['seq']},
+                    "body": {"type": "ping"}}
+        await websocket.send(json.dumps(ping_msg))
+        sessions[session_id]['seq'] += 1
+        await asyncio.sleep(1)
+        latency = int((time.time() - start_time) * 1000)
+        pong_msg = {"head": {"latency": latency, "seq": sessions[session_id]['seq']},
+                    "body": {"type": "pong"}}
+        await websocket.send(json.dumps(pong_msg))
+        sessions[session_id]['seq'] += 1
+        logger.info("Pong sent to %s with latency %dms", session_id, latency)
+
+
+async def handle_req(websocket, message, session_id):
+    req_type = message['body']['type']
+    content = message['body'].get('content')
+    if req_type == 'hello':
+        logger.info("Hello request from %s at %s", session_id, datetime.now())
+        bonjour_msg = {"head": {"latency": 0, "seq": sessions[session_id]['seq']},
+                       "body": {"type": "bonjour", "content": "Welcome"}}
+        await websocket.send(json.dumps(bonjour_msg))
+        sessions[session_id]['seq'] += 1
+    elif req_type == 'time':
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        time_msg = {"head": {"latency": 0, "seq": sessions[session_id]['seq']},
+                    "body": {"type": "time", "content": current_time}}
+        await websocket.send(json.dumps(time_msg))
+        sessions[session_id]['seq'] += 1
+    elif req_type == 'random':
+        random_num = content
+        hash_value = hashlib.sha256(str(random_num).encode()).hexdigest()
+        logger.info("Received random number %s from %s", random_num, session_id)
+        hash_msg = {"head": {"latency": 0, "seq": sessions[session_id]['seq']},
+                    "body": {"type": "hash", "content": hash_value}}
+        await websocket.send(json.dumps(hash_msg))
+        sessions[session_id]['seq'] += 1
 
 
 async def main():
-    """主入口点，启动WebSocket服务器和时间广播任务"""
-    start_server = websockets.serve(pingpong, "localhost", 8765)
-    await start_server
-    time_broadcast_task = asyncio.create_task(broadcast_time())
-
-    await time_broadcast_task  # 等待直到时间广播任务结束（实际上不会，因为它一直在循环）
+    async with websockets.serve(handle_client, "localhost", 58789):
+        await asyncio.Future()
 
 
 if __name__ == "__main__":
