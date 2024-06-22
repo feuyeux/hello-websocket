@@ -19,64 +19,111 @@ sessions = {}
 
 async def handle_client(websocket, path):
     session_id = id(websocket)
-    sessions[session_id] = {'last_ping': time.time(), 'seq': 0}
-
+    sessions[session_id] = {
+        'path': path,
+        'last_pong': time.time()
+    }
+    logger.info("%s connect via %s", session_id, path)
     try:
-        await ping_pong(websocket, session_id)
         while True:
+            await ping(websocket, session_id)
+            await timestamp(websocket)
+            logger.info("Waiting for message from %s", session_id)
             message = await websocket.recv()
             message_dict = json.loads(message)
-            if message_dict['body']['type'] == 'req':
+            if message_dict['body']['type'] == 'pong':
+                sessions[session_id]['last_pong'] = time.time()
+            elif message_dict['body']['type'] == 'req':
                 await handle_req(websocket, message_dict, session_id)
     except websockets.exceptions.ConnectionClosedOK:
         logger.info("Client [%s] disconnected", session_id)
         del sessions[session_id]
-
-
-async def ping_pong(websocket, session_id):
-    while True:
-        start_time = time.time()
-        ping_msg = {"head": {"userId": "server", "seq": sessions[session_id]['seq']},
-                    "body": {"type": "ping"}}
-        await websocket.send(json.dumps(ping_msg))
-        sessions[session_id]['seq'] += 1
-        await asyncio.sleep(1)
-        latency = int((time.time() - start_time) * 1000)
-        pong_msg = {"head": {"latency": latency, "seq": sessions[session_id]['seq']},
-                    "body": {"type": "pong"}}
-        await websocket.send(json.dumps(pong_msg))
-        sessions[session_id]['seq'] += 1
-        logger.info("Pong sent to %s with latency %dms", session_id, latency)
+        await websocket.close()
 
 
 async def handle_req(websocket, message, session_id):
-    req_type = message['body']['type']
+    start_time = time.time()
     content = message['body'].get('content')
-    if req_type == 'hello':
-        logger.info("Hello request from %s at %s", session_id, datetime.now())
-        bonjour_msg = {"head": {"latency": 0, "seq": sessions[session_id]['seq']},
-                       "body": {"type": "bonjour", "content": "Welcome"}}
+    user_id = message['header'].get('userId')
+    seq = message['header'].get('seq')
+    if content == 'hello':
+        logger.info("Received Hello from %s[%s] at %s",
+                    session_id, user_id, datetime.now())
+        bonjour_msg = {
+            "header": {
+                "latency": int((time.time() - start_time) * 1000),
+                "seq": seq
+            },
+            "body": {
+                "type": "resp",
+                "content": "bonjour"
+            }
+        }
         await websocket.send(json.dumps(bonjour_msg))
-        sessions[session_id]['seq'] += 1
-    elif req_type == 'time':
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        time_msg = {"head": {"latency": 0, "seq": sessions[session_id]['seq']},
-                    "body": {"type": "time", "content": current_time}}
-        await websocket.send(json.dumps(time_msg))
-        sessions[session_id]['seq'] += 1
-    elif req_type == 'random':
-        random_num = content
-        hash_value = hashlib.sha256(str(random_num).encode()).hexdigest()
-        logger.info("Received random number %s from %s", random_num, session_id)
-        hash_msg = {"head": {"latency": 0, "seq": sessions[session_id]['seq']},
-                    "body": {"type": "hash", "content": hash_value}}
+    else:
+        hash_value = hashlib.sha256(content.encode()).hexdigest()
+        logger.info("Received random number %s from %s[%s]",
+                    content, session_id, user_id)
+        hash_msg = {
+            "header": {
+                "latency": int((time.time() - start_time) * 1000),
+                "seq": seq
+            },
+            "body": {
+                "type": "resp",
+                "content": hash_value
+            }
+        }
         await websocket.send(json.dumps(hash_msg))
-        sessions[session_id]['seq'] += 1
+
+
+async def timestamp(websocket):
+    await asyncio.sleep(5)
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    time_msg = {
+        "header": {
+            "userId": "server",
+            "seq": datetime.now().timestamp()
+        },
+        "body": {
+            "type": "req",
+            "content": current_time
+        }
+    }
+    request = json.dumps(time_msg)
+    await websocket.send(request)
+
+
+async def ping(websocket, session_id):
+    await asyncio.sleep(1)
+    now = time.time()
+    if now - sessions[session_id]['last_pong'] > 3 * 60 * 1000:
+        logger.info("Client [%s] is not responding(now:%d, last pong:%d), closing connection",
+                    session_id, sessions[session_id]['last_pong'])
+        del sessions[session_id]
+        await websocket.close()
+    else:
+        ping_msg = {
+            "header": {
+                "userId": "server",
+                "seq": datetime.now().timestamp()
+            },
+            "body": {
+                "type": "ping"
+            }
+        }
+        await websocket.send(json.dumps(ping_msg))
 
 
 async def main():
     async with websockets.serve(handle_client, "localhost", 58789):
-        await asyncio.Future()
+        logger.info("Hello Websocket server started")
+        try:
+            await asyncio.Future()
+        except asyncio.CancelledError:
+            pass
+        finally:
+            logger.info("Hello Websocket server stopped")
 
 
 if __name__ == "__main__":

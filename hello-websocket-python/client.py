@@ -1,8 +1,11 @@
 import asyncio
 import json
+from datetime import datetime
+
 import websockets
 import logging
 import random
+import time
 
 logger = logging.getLogger('websocket-server')
 logger.setLevel(logging.INFO)
@@ -15,50 +18,79 @@ logger.addHandler(console)
 
 async def connect_to_server():
     async with websockets.connect("ws://localhost:58789") as websocket:
-        await send_hello(websocket)
-        await receive_bonjour(websocket)
-        await send_time_request(websocket)
-        await send_random_number(websocket)
+        session = {
+            'client_id': "client_" + str(random.randint(1, 100)),
+        }
+        await send_hello(websocket, session)
+        while True:
+            await send_random_number(websocket, session)
+            response = await websocket.recv()
+            response_dict = json.loads(response)
+            await handle_resp(websocket, session, response_dict)
 
 
-async def send_hello(websocket):
-    hello_msg = {"head": {"userId": "client", "seq": 0},
-                 "body": {"type": "hello"}}
-    await websocket.send(json.dumps(hello_msg))
+async def send_hello(websocket, session):
+    hello_msg = {
+        "header": {
+            "userId": session['client_id'],
+            "seq": datetime.now().timestamp()
+        },
+        "body": {
+            "type": "req",
+            "content": "hello"
+        }
+    }
+    request = json.dumps(hello_msg)
+    logger.info("Sending Hello to server at %s", datetime.now())
+    await websocket.send(request)
 
 
-async def receive_bonjour(websocket):
-    response = await websocket.recv()
-    response_dict = json.loads(response)
-    logger.info("Received from server: %s", response_dict)
+async def send_random_number(websocket, session):
+    await asyncio.sleep(5)
+    random_msg = {
+        "header": {
+            "userId": session['client_id'],
+            "seq": datetime.now().timestamp()
+        },
+        "body": {
+            "type": "req",
+            "content": str(random.randint(1, 100))
+        }
+    }
+    await websocket.send(json.dumps(random_msg))
 
 
-async def send_time_request(websocket):
-    while True:
-        await asyncio.sleep(5)
-        time_msg = {"head": {"userId": "client", "seq": 1},
-                    "body": {"type": "time"}}
-        await websocket.send(json.dumps(time_msg))
-        response = await websocket.recv()
-        response_dict = json.loads(response)
-        logger.info("Server time:  %s", response_dict)
-
-
-async def send_random_number(websocket):
-    while True:
-        await asyncio.sleep(5)
-        random_num = random.randint(1, 100)
-        random_msg = {"head": {"userId": "client", "seq": 2},
-                      "body": {"type": "random", "content": random_num}}
-        await websocket.send(json.dumps(random_msg))
-        response = await websocket.recv()
-        response_dict = json.loads(response)
-        logger.info("Hash value received:  %s", response_dict)
+async def handle_resp(websocket, session, message):
+    start_time = time.time()
+    resp_type = message['body']['type']
+    seq = message['header'].get('seq')
+    content = message['body'].get('content')
+    if resp_type == 'ping':
+        pong_msg = {
+            "header": {
+                "latency": int((time.time() - start_time) * 1000),
+                "seq": seq
+            },
+            "body": {
+                "type": "pong"
+            }
+        }
+        await websocket.send(json.dumps(pong_msg))
+    elif resp_type == 'resp':
+        if content == 'bonjour':
+            logger.info("Received Bonjour from server at %s", datetime.now())
+        else:
+            logger.info("Received Hash value: %s", content)
+    else:
+        logger.info("Received timestamp from server: %s", content)
 
 
 async def main():
-    await connect_to_server()
-
+    try:
+        await connect_to_server()
+    except websockets.exceptions.ConnectionClosed:
+        pass
+        logger.info("Hello Websocket client stopped")
 
 if __name__ == "__main__":
     asyncio.run(main())
