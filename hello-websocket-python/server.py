@@ -19,11 +19,14 @@ sessions = {}
 
 async def handle_client(websocket, path):
     session_id = id(websocket)
+    headers = websocket.request_headers
+    user_id = headers.get('userId')
     sessions[session_id] = {
         'path': path,
+        'user_id': user_id,
         'last_pong': current_timestamp()
     }
-    logger.info("%s connect(%s)", session_id, path)
+    logger.info("%s connect(%s[%s])", session_id, user_id, path)
     try:
         while True:
             await ping(websocket, session_id)
@@ -51,15 +54,10 @@ def str_timestamp():
 async def handle_req(websocket, message, session_id):
     start_time = time.time()
     content = message['body'].get('content')
-    user_id = message['header'].get('userId')
-    seq = message['header'].get('seq')
+    user_id = sessions[session_id]['user_id']
     if content == 'hello':
         logger.info("%s[%s] << Hello", session_id, user_id)
         bonjour_msg = {
-            "header": {
-                "latency": int((time.time() - start_time) * 1000),
-                "seq": seq
-            },
             "body": {
                 "type": "resp",
                 "content": "bonjour"
@@ -69,31 +67,25 @@ async def handle_req(websocket, message, session_id):
         await websocket.send(response)
     else:
         hash_value = hashlib.sha256(content.encode()).hexdigest()
-        logger.info("%s[%s] >> random: seq:%s,number:%s",
-                    session_id, user_id, seq, content)
+        logger.info("%s[%s] >> random: number:%s",
+                    session_id, user_id, content)
         latency = int((time.time() - start_time) * 1000)
         hash_msg = {
-            "header": {
-                "latency": latency,
-                "seq": seq
-            },
             "body": {
                 "type": "resp",
                 "content": hash_value
             }
         }
         response = json.dumps(hash_msg)
-        logger.info("%s[%s] << random, seq:%s, hash: %s %dms", session_id, user_id, seq, hash_value, latency)
+
+        logger.info("%s[%s] << random, hash: %s %dms",
+                    session_id, user_id,  hash_value, latency)
         await websocket.send(response)
 
 
 async def send_time(websocket):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     time_msg = {
-        "header": {
-            "userId": "server",
-            "seq": str_timestamp()
-        },
         "body": {
             "type": "req",
             "content": current_time
@@ -114,10 +106,6 @@ async def ping(websocket, session_id):
         await websocket.close()
     else:
         ping_msg = {
-            "header": {
-                "userId": "server",
-                "seq": str_timestamp()
-            },
             "body": {
                 "type": "ping"
             }

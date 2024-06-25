@@ -17,10 +17,16 @@ logger.addHandler(console)
 
 
 async def connect_to_server():
-    async with websockets.connect("ws://localhost:58789") as websocket:
-        session = {
-            'client_id': "client_" + str(random.randint(100, 1000)),
-        }
+    session = {
+        'client_id': "client_" + str(random.randint(100, 1000)),
+    }
+
+    hello_headers = [
+        ("userId", session['client_id']),
+    ]
+
+    async with websockets.connect("ws://localhost:58789", extra_headers=hello_headers) as websocket:
+
         try:
             await asyncio.wait_for(send_hello(websocket, session), timeout=3)
         except asyncio.TimeoutError:
@@ -35,10 +41,6 @@ async def connect_to_server():
 
 async def send_hello(websocket, session):
     hello_msg = {
-        "header": {
-            "userId": session['client_id'],
-            "seq": datetime.now().timestamp()
-        },
         "body": {
             "type": "req",
             "content": "hello"
@@ -53,10 +55,6 @@ async def send_random_number(websocket, session):
     seq = int(round(time.time() * 1000))
     number = str(random.randint(1, 100))
     random_msg = {
-        "header": {
-            "userId": session['client_id'],
-            "seq": seq
-        },
         "body": {
             "type": "req",
             "content": number
@@ -69,18 +67,11 @@ async def send_random_number(websocket, session):
 
 
 async def handle_resp(websocket, message):
-    start_time = time.time()
     resp_type = message['body']['type']
-    seq = message['header'].get('seq')
-    latency = message['header'].get('latency')
     content = message['body'].get('content')
     #
     if resp_type == 'ping':
         pong_msg = {
-            "header": {
-                "latency": int((time.time() - start_time) * 1000),
-                "seq": seq
-            },
             "body": {
                 "type": "pong"
             }
@@ -90,7 +81,7 @@ async def handle_resp(websocket, message):
         if content == 'bonjour':
             logger.info(">> Bonjour")
         else:
-            logger.info(">> random, seq:%s, hash: %s %dms", seq, content, latency)
+            logger.info(">> random, hash: %s",  content)
     else:
         logger.info(">> timestamp: %s", content)
 
