@@ -17,3 +17,4 @@ source ws_env/bin/activate
 python client.py
 ```
 
+websockets doc: <https://websockets.readthedocs.io/en/stable/index.html>
