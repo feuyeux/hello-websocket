@@ -2,22 +2,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
-    <groupId>org.feuyeux.websocket</groupId>
+    <parent>
+        <groupId>org.feuyeux.websocket</groupId>
+        <artifactId>hello-websocket</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
     <artifactId>hello-websocket-server</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
-
-    <properties>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.encoding>UTF-8</maven.compiler.encoding>
-        <java.version>21</java.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <springboot.version>3.3.2</springboot.version>
-        <!-- https://mvnrepository.com/artifact/com.coveo/fmt-maven-plugin -->
-        <fmt-maven-plugin.version>2.23</fmt-maven-plugin.version>
-    </properties>
 
     <dependencies>
         <dependency>
@@ -28,7 +19,7 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-buffer</artifactId>
-            <version>4.1.112.Final</version>
+            <version>${netty.version}</version>
         </dependency>
         <!-- HTML templates https://www.thymeleaf.org/ -->
         <dependency>
@@ -49,10 +40,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>${maven-compiler-plugin.version}</version>
                 <configuration>
                     <encoding>UTF-8</encoding>
-                    <release>21</release>
+                    <release>${java.version}</release>
                     <compilerArgs>
                         <arg>-Xlint:unchecked</arg>
                         <arg>-Xlint:-options</arg>
