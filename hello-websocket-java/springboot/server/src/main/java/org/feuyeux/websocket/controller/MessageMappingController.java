@@ -1,5 +1,6 @@
 package org.feuyeux.websocket.controller;
 
+import jakarta.annotation.PreDestroy;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -68,5 +69,16 @@ public class MessageMappingController {
   public String sendOneTimeMessage() {
     logger.info("Subscription via the application");
     return "server one-time message via the application";
+  }
+
+  @PreDestroy
+  public void destroy() {
+    logger.info("Mock releasing resources...");
+    try {
+      TimeUnit.SECONDS.sleep(3);
+    } catch (InterruptedException e) {
+      logger.error("", e);
+    }
+    logger.info("Mock released resources.");
   }
 }

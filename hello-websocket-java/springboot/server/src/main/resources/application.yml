@@ -4,4 +4,7 @@ logging:
     root: INFO
 #    org.springframework.web.socket: TRACE
 #    org.springframework.messaging.simp: TRACE
-server.port: 8080
+server:
+  port: 8080
+  shutdown: graceful
+spring.lifecycle.timeout-per-shutdown-phase: 10s
