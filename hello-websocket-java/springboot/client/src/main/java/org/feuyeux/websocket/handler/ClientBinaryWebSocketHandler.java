@@ -1,6 +1,7 @@
 package org.feuyeux.websocket.handler;
 
 import io.netty.buffer.ByteBuf;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 import org.feuyeux.websocket.codec.EchoRequestCodec;
@@ -24,7 +25,8 @@ public class ClientBinaryWebSocketHandler extends BinaryWebSocketHandler {
 
   @Override
   public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-    logger.info("Client connection opened[{}]", type);
+    InetAddress address = session.getRemoteAddress().getAddress();
+    logger.info("Client connection({}) opened[{}]", address, type);
     TimeUnit.SECONDS.sleep(1);
     // Send a message to the server
     String payload = String.format("Hello %s", type);
