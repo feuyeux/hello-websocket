@@ -113,4 +113,4 @@ RESPONSE
 
 ## :coffee: Stars
 
-[![Star History Chart](https://api.star-history.com/svg?repos=feuyeux/hello-grpc&type=Date)](https://star-history.com/#feuyeux/hello-grpc&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=feuyeux/hello-websocket&type=Date)](https://star-history.com/#feuyeux/hello-websocket&Date)
