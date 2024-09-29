@@ -12,13 +12,7 @@ updates:
       time: "05:00"
       timezone: "Asia/Shanghai"
   - package-ecosystem: "maven"
-    directory: "hello-websocket-java/springboot/server"
-    schedule:
-      interval: "daily"
-      time: "06:00"
-      timezone: "Asia/Shanghai"
-  - package-ecosystem: "maven"
-    directory: "hello-websocket-java/springboot/client"
+    directory: "hello-websocket-java/springboot"
     schedule:
       interval: "daily"
       time: "06:00"

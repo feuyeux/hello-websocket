@@ -6,7 +6,86 @@
 
 ### protocol
 
+#### Upstream
+
+REQEUST
+
 ```json
+{
+  "data": "请求数据",
+  "meta": "客户端语言"
+}
+```
+
+RESPONSE
+
+```json
+{
+  "status": 200,
+  "results": [
+    {
+      "id": 1234567890,
+      "type": "OK",
+      "kv": {
+        "id": "uuid",
+        "idx": 1,
+        "data": "响应数据",
+        "meta": "服务器端语言"
+      }
+    },
+    {
+      "id": 1234567891,
+      "type": "FAIL",
+      "kv": {
+        "id": "uuid",
+        "idx": 2,
+        "data": "响应数据",
+        "meta": "服务器端语言"
+      }
+    }
+  ]
+}
+```
+
+#### Downstream
+
+REQEUST
+
+```json
+{
+  "data": "请求数据",
+  "meta": "客户端语言"
+}
+```
+
+RESPONSE
+
+```json
+{
+  "status": 200,
+  "results": [
+    {
+      "id": 1234567890,
+      "type": "OK",
+      "kv": {
+        "id": "uuid",
+        "idx": 1,
+        "data": "响应数据",
+        "meta": "服务器端语言"
+      }
+    },
+    {
+      "id": 1234567891,
+      "type": "FAIL",
+      "kv": {
+        "id": "uuid",
+        "idx": 2,
+        "data": "响应数据",
+        "meta": "服务器端语言"
+      }
+    }
+  ]
+}
 ```
 
 ### languanges
