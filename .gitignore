@@ -86,3 +86,5 @@ migrate_working_dir/
 Cargo.lock
 
 hello-websocket-python/ws_env
+
+*.log.gz

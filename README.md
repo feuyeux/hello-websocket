@@ -12,6 +12,7 @@ REQEUST
 
 ```json
 {
+  "id": 1,
   "data": "请求数据",
   "meta": "客户端语言"
 }
@@ -28,7 +29,7 @@ RESPONSE
       "type": "OK",
       "kv": {
         "id": "uuid",
-        "idx": 1,
+        "idx": "1",
         "data": "响应数据",
         "meta": "服务器端语言"
       }
@@ -38,7 +39,7 @@ RESPONSE
       "type": "FAIL",
       "kv": {
         "id": "uuid",
-        "idx": 2,
+        "idx": "2",
         "data": "响应数据",
         "meta": "服务器端语言"
       }

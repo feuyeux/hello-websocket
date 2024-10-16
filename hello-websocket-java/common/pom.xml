@@ -4,41 +4,24 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.feuyeux.websocket</groupId>
-  <artifactId>hello-websocket-netty</artifactId>
+  <artifactId>hello-websocket-java-common</artifactId>
   <version>0.0.1-SNAPSHOT</version>
 
   <properties>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
-    <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
-    <log4j.version>2.24.1</log4j.version>
-    <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
-    <lombok.version>1.18.34</lombok.version>
-    <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
     <netty.version>4.1.114.Final</netty.version>
-    <!-- https://mvnrepository.com/artifact/com.coveo/fmt-maven-plugin -->
+    <lombok.version>1.18.34</lombok.version>
     <fmt-maven-plugin.version>2.25</fmt-maven-plugin.version>
   </properties>
 
   <dependencies>
     <dependency>
-      <groupId>org.feuyeux.websocket</groupId>
-      <artifactId>hello-websocket-java-common</artifactId>
-      <version>0.0.1-SNAPSHOT</version>
-    </dependency>
-
-    <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-all</artifactId>
       <version>${netty.version}</version>
+      <scope>provided</scope>
     </dependency>
-
-    <dependency>
-      <groupId>org.apache.logging.log4j</groupId>
-      <artifactId>log4j-slf4j-impl</artifactId>
-      <version>${log4j.version}</version>
-    </dependency>
-
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
@@ -46,9 +29,7 @@
       <scope>provided</scope>
     </dependency>
   </dependencies>
-
   <build>
-    <finalName>${env.DEPLOY_NAME}</finalName>
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -62,31 +43,6 @@
             <arg>-Xlint:-options</arg>
           </compilerArgs>
         </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-assembly-plugin</artifactId>
-        <version>3.7.1</version>
-        <configuration>
-          <descriptorRefs>
-            <descriptorRef>jar-with-dependencies</descriptorRef>
-          </descriptorRefs>
-          <archive>
-            <manifest>
-              <addClasspath>true</addClasspath>
-              <mainClass>${env.MAIN_CLASS}</mainClass>
-            </manifest>
-          </archive>
-        </configuration>
-        <executions>
-          <execution>
-            <id>make-assembly</id>
-            <phase>package</phase>
-            <goals>
-              <goal>single</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
       <plugin>
         <groupId>com.spotify.fmt</groupId>

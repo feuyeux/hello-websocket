@@ -1,10 +1,12 @@
 package org.feuyeux.websocket;
 
-import static org.feuyeux.websocket.config.EchoConfig.*;
+import static org.feuyeux.websocket.config.EchoConfig.SSL;
 
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
@@ -22,12 +24,18 @@ public class HelloServer {
     final EventLoopGroup bossGroup = new NioEventLoopGroup(1);
     final EventLoopGroup workerGroup = new NioEventLoopGroup(2);
     try {
-      final ServerBootstrap b = new ServerBootstrap();
-      b.group(bossGroup, workerGroup)
+      final ServerBootstrap bootstrap = new ServerBootstrap();
+      bootstrap
+          .group(bossGroup, workerGroup)
           .channel(NioServerSocketChannel.class)
           .handler(new LoggingHandler(LogLevel.INFO))
-          .childHandler(new WebSocketServerInitializer());
-      ChannelFuture bind = b.bind(port);
+          .childHandler(new WebSocketServerInitializer())
+          .option(ChannelOption.SO_BACKLOG, 1024)
+          .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+          // Enable the keep-alive option for the child channels
+          .childOption(ChannelOption.SO_KEEPALIVE, true)
+          .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
+      ChannelFuture bind = bootstrap.bind(port);
       Channel ch = bind.addListener(f -> log.info("EchoServer start(:{})", port)).sync().channel();
       ch.closeFuture().syncUninterruptibly();
     } finally {

@@ -1,13 +1,15 @@
 package org.feuyeux.websocket.handler;
 
+import static org.feuyeux.websocket.tools.HelloUtils.getRandomId;
+
 import io.netty.buffer.ByteBuf;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
 import org.feuyeux.websocket.codec.EchoRequestCodec;
 import org.feuyeux.websocket.codec.EchoResponseCodec;
-import org.feuyeux.websocket.pojo.EchoRequest;
-import org.feuyeux.websocket.pojo.EchoResponse;
+import org.feuyeux.websocket.info.EchoRequest;
+import org.feuyeux.websocket.info.EchoResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.socket.BinaryMessage;
@@ -29,8 +31,7 @@ public class ClientBinaryWebSocketHandler extends BinaryWebSocketHandler {
     logger.info("Client connection({}) opened[{}]", address, type);
     TimeUnit.SECONDS.sleep(1);
     // Send a message to the server
-    String payload = String.format("Hello %s", type);
-    EchoRequest echoRequest = new EchoRequest(System.currentTimeMillis(), payload);
+    EchoRequest echoRequest = EchoRequest.builder().meta("JAVA").data(getRandomId()).build();
     ByteBuf respByteBuf = EchoRequestCodec.encode(echoRequest);
     session.sendMessage(new BinaryMessage(respByteBuf.nioBuffer()));
   }

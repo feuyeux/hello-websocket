@@ -46,7 +46,7 @@ public class WebSocketClientInitializer extends ChannelInitializer<SocketChannel
     }
     pipeline.addLast("http-codec", new HttpClientCodec());
     pipeline.addLast("aggregator", new HttpObjectAggregator(65536));
-    //        WebSocketClientCompressionHandler.INSTANCE
+    // WebSocketClientCompressionHandler.INSTANCE
     pipeline.addLast("ws-handler", handler);
   }
 }
