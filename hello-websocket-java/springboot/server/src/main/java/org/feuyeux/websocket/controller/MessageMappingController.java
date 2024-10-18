@@ -33,12 +33,11 @@ public class MessageMappingController {
 
   @MessageMapping("/send")
   @SendTo("/queue/responses")
-  public GenericMessage<String> send(GenericMessage<String> message) {
+  public String send(GenericMessage<String> message) {
     try {
-      message.getHeaders().forEach((k, v) -> logger.info("header: {}={}", k, v));
+      message.getHeaders().forEach((k, v) -> logger.debug("header: {}={}", k, v));
       DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-      String s = df.format(new Date());
-      GenericMessage<String> response = new GenericMessage<>(s + ">>" + message.getPayload());
+      String response = df.format(new Date()) + ">>" + message.getPayload();
       logger.info("send: {}", response);
       return response;
     } catch (Exception e) {

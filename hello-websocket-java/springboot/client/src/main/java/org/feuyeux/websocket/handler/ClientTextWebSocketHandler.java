@@ -22,16 +22,12 @@ public class ClientTextWebSocketHandler extends TextWebSocketHandler {
   public void afterConnectionEstablished(WebSocketSession session) throws Exception {
     logger.info("Client connection opened[{}]", type);
     TimeUnit.SECONDS.sleep(1);
-    // Send a message to the server
-    String payload = String.format("Hello %s", type);
-    TextMessage message = new TextMessage(payload);
-    logger.info("Client sends: {}", message.getPayload());
-    session.sendMessage(message);
+    sendMessage(session);
   }
 
   @Override
   public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-    logger.info("Client connection closed[{}]: {}", type, status);
+    logger.info("Client connection closed[{}]: {}", type, status.getCode());
   }
 
   @Override
@@ -43,5 +39,12 @@ public class ClientTextWebSocketHandler extends TextWebSocketHandler {
   @Override
   public void handleTransportError(WebSocketSession session, Throwable exception) {
     logger.info("Client transport error[{}]: {}", type, exception.getMessage());
+  }
+
+  private void sendMessage(WebSocketSession session) throws IOException {
+    String payload = String.format("Hello %s", type);
+    TextMessage message = new TextMessage(payload);
+    logger.info("Client sends: {}", message.getPayload());
+    session.sendMessage(message);
   }
 }

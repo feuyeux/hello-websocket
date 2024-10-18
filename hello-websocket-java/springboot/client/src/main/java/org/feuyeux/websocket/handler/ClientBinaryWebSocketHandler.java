@@ -3,6 +3,7 @@ package org.feuyeux.websocket.handler;
 import static org.feuyeux.websocket.tools.HelloUtils.getRandomId;
 
 import io.netty.buffer.ByteBuf;
+import java.io.IOException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.concurrent.TimeUnit;
@@ -30,15 +31,12 @@ public class ClientBinaryWebSocketHandler extends BinaryWebSocketHandler {
     InetAddress address = session.getRemoteAddress().getAddress();
     logger.info("Client connection({}) opened[{}]", address, type);
     TimeUnit.SECONDS.sleep(1);
-    // Send a message to the server
-    EchoRequest echoRequest = EchoRequest.builder().meta("JAVA").data(getRandomId()).build();
-    ByteBuf respByteBuf = EchoRequestCodec.encode(echoRequest);
-    session.sendMessage(new BinaryMessage(respByteBuf.nioBuffer()));
+    sendMessage(session);
   }
 
   @Override
   public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-    logger.info("Client connection closed[{}]: {}", type, status);
+    logger.info("Client connection closed[{}]: {}", type, status.getCode());
   }
 
   @Override
@@ -53,5 +51,11 @@ public class ClientBinaryWebSocketHandler extends BinaryWebSocketHandler {
   @Override
   public void handleTransportError(WebSocketSession session, Throwable exception) {
     logger.info("Client transport error[{}]: {}", type, exception.getMessage());
+  }
+
+  private static void sendMessage(WebSocketSession session) throws IOException {
+    EchoRequest echoRequest = EchoRequest.builder().meta("[JAVA]").data(getRandomId()).build();
+    ByteBuf respByteBuf = EchoRequestCodec.encode(echoRequest);
+    session.sendMessage(new BinaryMessage(respByteBuf.nioBuffer()));
   }
 }

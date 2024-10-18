@@ -15,7 +15,7 @@ public class ClientStompSessionHandler extends StompSessionHandlerAdapter {
   @Override
   public void afterConnected(StompSession session, StompHeaders headers) {
     try {
-      logger.info("Client connected[websocket-sockjs-stomp]: headers {}", headers);
+      logger.debug("Client connected[websocket-sockjs-stomp]: headers {}", headers);
       // Subscribe to the server's topic
       session.subscribe("/hello/subscribe", this);
       session.subscribe("/queue/responses", this);
@@ -33,8 +33,12 @@ public class ClientStompSessionHandler extends StompSessionHandlerAdapter {
 
   @Override
   public void handleFrame(StompHeaders headers, Object payload) {
-    logger.info("Client received: {}", payload);
-    // logger.debug("Client received: payload {}, headers {}", payload, headers);
+    try {
+      logger.info(
+          "Client received header destination: {}, payload: {}", headers.getDestination(), payload);
+    } catch (Exception e) {
+      logger.error("", e);
+    }
   }
 
   @Override

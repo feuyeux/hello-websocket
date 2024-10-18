@@ -33,7 +33,7 @@ public class ServerTextWebSocketHandler extends TextWebSocketHandler {
 
   @Override
   public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-    logger.info("Server connection closed: {}", status);
+    logger.info("Server connection closed({})", status.getCode());
     sessions.remove(session);
   }
 
