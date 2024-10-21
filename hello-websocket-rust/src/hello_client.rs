@@ -9,7 +9,7 @@ use tokio::io::{AsyncReadExt,AsyncWriteExt};
 use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
 use tungstenite::client::IntoClientRequest;
 use uuid::Uuid;
-
+use crate::hello_common::{EchoResponse, EchoRequest};
 #[tokio::main]
 async fn main() {
     // standard input sender & receiver
@@ -45,6 +45,8 @@ async fn main() {
     let ws_to_stdout = {
         read.for_each(|message| async {
             let data = message.unwrap().into_data();
+            let response: EchoResponse = EchoResponse::decode(&data);
+            println!("{:?}", response);
             tokio::io::stdout().write_all(&data).await.unwrap();
         })
     };
@@ -61,6 +63,11 @@ async fn read_stdin(tx: futures_channel::mpsc::UnboundedSender<Message>) {
             Ok(n) => n,
         };
         buf.truncate(n);
-        tx.unbounded_send(Message::binary(buf)).unwrap();
+        let request = EchoRequest {
+            id: 1,
+            meta: "Rust".to_string(),
+            data: String::from_utf8(buf).unwrap(),
+        };
+        tx.unbounded_send(Message::binary(request.encode())).unwrap();
     }
 }
