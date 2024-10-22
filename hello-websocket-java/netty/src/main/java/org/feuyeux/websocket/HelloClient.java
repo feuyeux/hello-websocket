@@ -64,14 +64,12 @@ public class HelloClient {
 
   public void send(Channel ch) {
     if (ch != null && ch.isActive()) {
-      log.info("Sending messages");
       buildLinkRequests()
           .forEach(
               request -> {
                 sendBinary(ch, request);
               });
       sendText(ch, ch.toString() + id.incrementAndGet());
-      log.info("Complete to send");
     }
   }
 

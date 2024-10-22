@@ -18,8 +18,5 @@ cargo run --bin hello-server
 ```
 
 ```sh
-cargo run --bin hello-client Eric
-cargo run --bin hello-client Caroline
+cargo run --bin hello-client
 ```
-
-![hello-websocket](hello-websocket.png)
