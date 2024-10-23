@@ -1,11 +1,12 @@
 import asyncio
 import json
-from datetime import datetime
-
+import uuid
 import websockets
 import logging
 import random
 import time
+
+from common import build_link_requests, EchoRequest
 
 logger = logging.getLogger('websocket-server')
 logger.setLevel(logging.INFO)
@@ -39,16 +40,20 @@ async def connect_to_server():
             await send_random_number(websocket, session)
 
 
-async def send_hello(websocket, session):
-    hello_msg = {
-        "body": {
-            "type": "req",
-            "content": "hello"
-        }
-    }
-    request = json.dumps(hello_msg)
-    logger.info("<< Hello")
-    await websocket.send(request)
+async def send_hello(websocket):
+    if websocket.open:
+        for request in build_link_requests():
+            await send_binary(websocket, request)
+        await send_text(websocket, f"{websocket.local_address} {uuid.uuid4()}")
+
+async def send_text(websocket, text: str):
+    if websocket.open:
+        await websocket.send(text)
+
+async def send_binary(websocket, echo_request: EchoRequest):
+    if websocket.open:
+        await websocket.send(json.dumps(echo_request.__dict__))
+
 
 
 async def send_random_number(websocket, session):

@@ -6,6 +6,8 @@ import hashlib
 import logging
 from datetime import datetime
 
+from common import EchoRequest, build_result
+
 # 创建一个logger
 logger = logging.getLogger('websocket-server')
 logger.setLevel(logging.INFO)
@@ -50,38 +52,30 @@ def current_timestamp():
 def str_timestamp():
     return str(current_timestamp())
 
+async def handle_req(websocket, message_dict, session_id):
+    content = message_dict['body'].get('content')
+    if content:
+        # 创建 EchoRequest 对象
+        echo_request = EchoRequest(message=content, id=int(session_id))
 
-async def handle_req(websocket, message, session_id):
-    start_time = time.time()
-    content = message['body'].get('content')
-    user_id = sessions[session_id]['user_id']
-    if content == 'hello':
-        logger.info("%s[%s] << Hello", session_id, user_id)
-        bonjour_msg = {
+        # 生成 EchoResult
+        echo_result = build_result(echo_request.id)
+
+        # Log the received message
+        logger.info("Received request from session %s: %s", session_id, content)
+
+        # Prepare the response message
+        response_msg = {
             "body": {
                 "type": "resp",
-                "content": "bonjour"
+                "content": echo_result.kv['data']
             }
         }
-        response = json.dumps(bonjour_msg)
-        await websocket.send(response)
+
+        # Send the response back to the client
+        await websocket.send(json.dumps(response_msg))
     else:
-        hash_value = hashlib.sha256(content.encode()).hexdigest()
-        logger.info("%s[%s] >> random: number:%s",
-                    session_id, user_id, content)
-        latency = int((time.time() - start_time) * 1000)
-        hash_msg = {
-            "body": {
-                "type": "resp",
-                "content": hash_value
-            }
-        }
-        response = json.dumps(hash_msg)
-
-        logger.info("%s[%s] << random, hash: %s %dms",
-                    session_id, user_id,  hash_value, latency)
-        await websocket.send(response)
-
+        logger.warning("Received request with no content from session %s", session_id)
 
 async def send_time(websocket):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
