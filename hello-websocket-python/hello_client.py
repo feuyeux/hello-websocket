@@ -6,7 +6,7 @@ import logging
 import random
 import time
 
-from common import build_link_requests, EchoRequest
+from common import build_link_requests, EchoRequest, EchoResponse, HOST, TCP_PORT
 
 logger = logging.getLogger('websocket-server')
 logger.setLevel(logging.INFO)
@@ -26,19 +26,23 @@ async def connect_to_server():
         ("userId", session['client_id']),
     ]
 
-    async with websockets.connect("ws://localhost:58789", extra_headers=hello_headers) as websocket:
-
+    hello_server_uri = f"ws://{HOST}:{TCP_PORT}"
+    async with websockets.connect(hello_server_uri, extra_headers=hello_headers) as websocket:
         try:
-            await asyncio.wait_for(send_hello(websocket, session), timeout=3)
+            await asyncio.wait_for(send_hello(websocket), timeout=3)
+            logger.info("AFTER")
         except asyncio.TimeoutError:
             logger.error('Timeout, no bonjour received, client canceled')
             return
         while True:
-            response = await websocket.recv()
-            response_dict = json.loads(response)
-            await handle_resp(websocket, response_dict)
-            await send_random_number(websocket, session)
-
+            message = await websocket.recv()
+            try:
+                echo_response = EchoResponse.from_bytes(message)
+                logger.info("Received response: %s", echo_response)
+            except:
+                response_dict = json.loads(message)
+                await handle_resp(websocket, response_dict)
+                await send_random_number(websocket, session)
 
 async def send_hello(websocket):
     if websocket.open:
@@ -52,7 +56,7 @@ async def send_text(websocket, text: str):
 
 async def send_binary(websocket, echo_request: EchoRequest):
     if websocket.open:
-        await websocket.send(json.dumps(echo_request.__dict__))
+        await websocket.send(echo_request.to_bytes())
 
 
 
