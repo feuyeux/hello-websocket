@@ -1,6 +1,6 @@
 package org.feuyeux.websocket;
 
-import static org.feuyeux.websocket.config.EchoConfig.SSL;
+import static org.feuyeux.websocket.EchoConfig.*;
 
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -19,8 +19,7 @@ import org.feuyeux.websocket.server.WebSocketServerInitializer;
 @Slf4j
 public class HelloServer {
   public void run() throws Exception {
-    final int port = Integer.parseInt(System.getProperty("port", SSL ? "9899" : "9898"));
-
+    final int port = SSL ? TLS_PORT : TCP_PORT;
     final EventLoopGroup bossGroup = new NioEventLoopGroup(1);
     final EventLoopGroup workerGroup = new NioEventLoopGroup(2);
     try {

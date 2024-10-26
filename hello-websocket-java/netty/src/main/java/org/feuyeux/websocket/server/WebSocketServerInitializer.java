@@ -1,6 +1,6 @@
 package org.feuyeux.websocket.server;
 
-import static org.feuyeux.websocket.config.EchoConfig.*;
+import static org.feuyeux.websocket.EchoConfig.*;
 
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;

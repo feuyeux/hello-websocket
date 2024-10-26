@@ -14,7 +14,7 @@ fi
 
 export DEPLOY_NAME=hello.websocket.java.server
 export MAIN_CLASS=org.feuyeux.websocket.HelloServer
-mvn clean package
+mvn clean package -U -Dmaven.test.skip=true
 
 if [ ! -d "bin" ]; then
     mkdir bin

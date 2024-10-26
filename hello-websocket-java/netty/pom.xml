@@ -23,7 +23,7 @@
   <dependencies>
     <dependency>
       <groupId>org.feuyeux.websocket</groupId>
-      <artifactId>hello-websocket-java-common</artifactId>
+      <artifactId>hello-websocket-common</artifactId>
       <version>0.0.1-SNAPSHOT</version>
     </dependency>
 

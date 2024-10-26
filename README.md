@@ -2,11 +2,9 @@
 
 # Hello Websocket
 
-## :coffee: Develop
+## :coffee: Protocol
 
-### protocol
-
-#### Upstream
+### Upstream
 
 REQEUST
 
@@ -34,28 +32,20 @@ RESPONSE
         "meta": "服务器端语言"
       }
     },
-    {
-      "id": 1234567891,
-      "type": "FAIL",
-      "kv": {
-        "id": "uuid",
-        "idx": "2",
-        "data": "响应数据",
-        "meta": "服务器端语言"
-      }
-    }
   ]
 }
 ```
 
-#### Downstream
+### Downstream
 
 REQEUST
 
 ```json
 {
-  "data": "请求数据",
-  "meta": "客户端语言"
+    "os_name": "Windows",
+    "os_version": "10.0.19042",
+    "os_release": "10",
+    "os_architecture": "AMD64"
 }
 ```
 
@@ -63,46 +53,62 @@ RESPONSE
 
 ```json
 {
-  "status": 200,
-  "results": [
-    {
-      "id": 1234567890,
-      "type": "OK",
-      "kv": {
-        "id": "uuid",
-        "idx": 1,
-        "data": "响应数据",
-        "meta": "服务器端语言"
-      }
-    },
-    {
-      "id": 1234567891,
-      "type": "FAIL",
-      "kv": {
-        "id": "uuid",
-        "idx": 2,
-        "data": "响应数据",
-        "meta": "服务器端语言"
-      }
-    }
-  ]
+    "language": "en_US",
+    "encoding": "UTF-8",
+    "time_zone": "UTC"
 }
 ```
 
-### languanges
+## :coffee: Diagram
+
+```mermaid
+%%{
+  init: {
+    'theme': 'forest'
+  }
+}%%
+sequenceDiagram        
+	Hello Client->>+Hello Server:connect
+	Hello Server->>Hello Server:session[+client]
+	Hello Server->>-Hello Client:connected
+	Hello Client->>+Hello Server:EchoRequest
+	Hello Server->>-Hello Client:EchoResponse
+	
+    loop Every 10 seconds
+    	participant Hello Server
+    	participant Hello Client
+        Hello Server->>+Hello Client:ping
+        alt pong
+            Hello Client->>-Hello Server:pong
+        else timeout
+            Hello Server->>Hello Server:session[-client] & close
+        end      
+    end
+    
+    loop Every 5 seconds
+        Hello Server->>+Hello Client:KissRequest
+        Hello Client->>-Hello Server:KissResponse
+    end
+    
+    Hello Client->>+Hello Server:disconnect
+	Hello Server->>-Hello Server:session[-client] & close
+```
+
+## :coffee: Features
+
+- protocol send/receive
+- header
+- ping/pong
+- handshake
+- tls
+
+## :coffee:  Langues
 
 1. [hello-websocket-java](hello-websocket-java)
 1. [hello-websocket-go](hello-websocket-go)
 1. [hello-websocket-rust](hello-websocket-rust)
 1. [hello-websocket-python](hello-websocket-python)
 1. [hello-websocket-nodejs](hello-websocket-nodejs)
-
-### features
-
-- pingpong
-- tls
-- handshake
-- payload
 
 ## :coffee: Build & Ship
 

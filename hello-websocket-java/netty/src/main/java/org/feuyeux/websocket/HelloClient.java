@@ -1,6 +1,6 @@
 package org.feuyeux.websocket;
 
-import static org.feuyeux.websocket.config.EchoConfig.*;
+import static org.feuyeux.websocket.EchoConfig.*;
 import static org.feuyeux.websocket.tools.HelloUtils.buildLinkRequests;
 
 import io.netty.bootstrap.Bootstrap;
@@ -26,9 +26,9 @@ public class HelloClient {
   public Channel open(EventLoopGroup group) {
     String URL;
     if (SSL) {
-      URL = String.format("wss://%s:9899%s", host, WEBSOCKET_PATH);
+      URL = String.format("wss://%s:%d%s", host, TLS_PORT, WEBSOCKET_PATH);
     } else {
-      URL = String.format("ws://%s:9898%s", host, WEBSOCKET_PATH);
+      URL = String.format("ws://%s:%d%s", host, TCP_PORT, WEBSOCKET_PATH);
     }
     URI uri = URI.create(URL);
     WebSocketVersion version = WebSocketVersion.V13;

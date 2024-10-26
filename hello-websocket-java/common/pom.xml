@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>org.feuyeux.websocket</groupId>
-  <artifactId>hello-websocket-java-common</artifactId>
+  <artifactId>hello-websocket-common</artifactId>
   <version>0.0.1-SNAPSHOT</version>
 
   <properties>
@@ -38,6 +38,13 @@
         <configuration>
           <encoding>UTF-8</encoding>
           <release>21</release>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>org.projectlombok</groupId>
+              <artifactId>lombok</artifactId>
+              <version>${lombok.version}</version>
+            </path>
+          </annotationProcessorPaths>
           <compilerArgs>
             <arg>-Xlint:unchecked</arg>
             <arg>-Xlint:-options</arg>

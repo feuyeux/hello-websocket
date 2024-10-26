@@ -47,7 +47,13 @@ public class HelloUtils {
   public static LinkedList<EchoRequest> buildLinkRequests() {
     LinkedList<EchoRequest> requests = new LinkedList<>();
     for (int i = 0; i < 3; i++) {
-      requests.addFirst(EchoRequest.builder().meta("JAVA").data(HelloUtils.getRandomId()).build());
+      EchoRequest echoRequest =
+          EchoRequest.builder()
+              .id(System.nanoTime())
+              .meta("JAVA")
+              .data(HelloUtils.getRandomId())
+              .build();
+      requests.addFirst(echoRequest);
     }
     return requests;
   }

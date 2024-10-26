@@ -1,6 +1,6 @@
 package org.feuyeux.websocket.client;
 
-import static org.feuyeux.websocket.config.EchoConfig.SSL;
+import static org.feuyeux.websocket.EchoConfig.SSL;
 
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelInitializer;
