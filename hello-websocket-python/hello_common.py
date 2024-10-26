@@ -15,8 +15,7 @@ def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
     if not logger.handlers:
         console = logging.StreamHandler()
         console.setLevel(level)
-        formatter = logging.Formatter(
-            "%(asctime)s [%(levelname)s] - %(message)s")
+        formatter = logging.Formatter("%(asctime)s [%(levelname)s] - %(message)s")
         console.setFormatter(formatter)
         logger.addHandler(console)
     return logger
@@ -45,8 +44,7 @@ def get_answer_map() -> Dict[str, str]:
 def build_link_requests() -> List[EchoRequest]:
     requests = []
     for _ in range(3):
-        requests.insert(0, EchoRequest(
-            timestamp_ns(), "JAVA", get_random_id()))
+        requests.insert(0, EchoRequest(timestamp_ns(), "JAVA", get_random_id()))
     return requests
 
 

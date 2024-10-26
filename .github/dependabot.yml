@@ -6,16 +6,22 @@
 version: 2
 updates:
   - package-ecosystem: "maven"
-    directory: "hello-websocket-java/netty"
+    directory: "hello-websocket-java/hello-websocket-common"
+    schedule:
+      interval: "daily"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+  - package-ecosystem: "maven"
+    directory: "hello-websocket-java/hello-websocket-netty"
+    schedule:
+      interval: "daily"
+      time: "04:00"
+      timezone: "Asia/Shanghai"
+  - package-ecosystem: "maven"
+    directory: "hello-websocket-java/hello-websocket-springboot"
     schedule:
       interval: "daily"
       time: "05:00"
-      timezone: "Asia/Shanghai"
-  - package-ecosystem: "maven"
-    directory: "hello-websocket-java/springboot"
-    schedule:
-      interval: "daily"
-      time: "06:00"
       timezone: "Asia/Shanghai"
   - package-ecosystem: "gomod"
     directory: "hello-websocket-go"
@@ -39,5 +45,5 @@ updates:
     directory: "hello-websocket-flutter-client"
     schedule:
       interval: "daily"
-      time: "10:00"
+      time: "06:00"
       timezone: "Asia/Shanghai"

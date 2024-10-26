@@ -1,1 +1,0 @@
-kill -15 $(jps | grep hello | awk '{print $1}')

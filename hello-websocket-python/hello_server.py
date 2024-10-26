@@ -24,8 +24,8 @@ async def handle_client(websocket, path):
     logger.info("sessions[%s]<-|%s|<-%s", session_id, path, client_id)
     try:
         while True:
-            await ping(websocket, session_id)
             await handle_req(websocket, session_id)
+            # await ping(websocket, session_id)
             await send_req(websocket)
 
     except websockets.exceptions.ConnectionClosedOK:
@@ -78,7 +78,7 @@ async def ping(websocket, session_id):
 
 
 async def main():
-    async with websockets.serve(handle_client, HOST, TCP_PORT):
+    async with websockets.serve(handle_client, HOST, TCP_PORT, ping_timeout=None):
         try:
             logger.info(f"Hello server started on {TCP_PORT}")
             await asyncio.Future()

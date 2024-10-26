@@ -2,5 +2,5 @@
 
 <https://jakarta.ee/specifications/websocket/>
 
-- [netty](netty)
-- [springboot](springboot)
+- [hello-websocket-netty](hello-websocket-netty)
+- [hello-websocket-springboot](hello-websocket-springboot)
