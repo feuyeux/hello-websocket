@@ -13,7 +13,7 @@
     <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
     <log4j.version>2.24.1</log4j.version>
     <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
-    <lombok.version>1.18.34</lombok.version>
+    <lombok.version>1.18.36</lombok.version>
     <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
     <netty.version>4.1.115.Final</netty.version>
     <!-- https://mvnrepository.com/artifact/com.coveo/fmt-maven-plugin -->
