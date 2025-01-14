@@ -15,7 +15,7 @@
     <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
     <lombok.version>1.18.36</lombok.version>
     <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
-    <netty.version>4.1.116.Final</netty.version>
+    <netty.version>4.1.117.Final</netty.version>
     <!-- https://mvnrepository.com/artifact/com.coveo/fmt-maven-plugin -->
     <fmt-maven-plugin.version>2.25</fmt-maven-plugin.version>
   </properties>
