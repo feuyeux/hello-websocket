@@ -10,7 +10,7 @@
   <properties>
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
-    <netty.version>4.2.0.Final</netty.version>
+    <netty.version>4.2.1.Final</netty.version>
     <lombok.version>1.18.38</lombok.version>
     <fmt-maven-plugin.version>2.27</fmt-maven-plugin.version>
   </properties>
