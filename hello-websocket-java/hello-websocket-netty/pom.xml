@@ -11,7 +11,7 @@
     <maven.compiler.source>21</maven.compiler.source>
     <maven.compiler.target>21</maven.compiler.target>
     <!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
-    <log4j.version>2.25.0</log4j.version>
+    <log4j.version>2.25.1</log4j.version>
     <!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
     <lombok.version>1.18.38</lombok.version>
     <!-- https://mvnrepository.com/artifact/io.netty/netty-all -->
