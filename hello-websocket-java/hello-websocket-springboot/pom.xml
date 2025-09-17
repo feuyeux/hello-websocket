@@ -29,7 +29,7 @@
         <netty.version>4.2.6.Final</netty.version>
         <slf4j.version>2.0.17</slf4j.version>
         <!-- https://mvnrepository.com/artifact/com.coveo/fmt-maven-plugin -->
-        <fmt-maven-plugin.version>2.28</fmt-maven-plugin.version>
+        <fmt-maven-plugin.version>2.29</fmt-maven-plugin.version>
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
     </properties>
 </project>
