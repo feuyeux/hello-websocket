@@ -1,3 +1,111 @@
+# Build outputs
+target/
+bin/
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+*.jar
+
+# Go
+hello-websocket-go/proto_server
+hello-websocket-go/proto_client
+
+# Rust
+hello-websocket-rust/target/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node.js / TypeScript
+node_modules/
+hello-websocket-ts/dist/
+
+# Java / Kotlin
+hello-websocket-java/target/
+hello-websocket-kotlin/build/
+hello-websocket-kotlin/server/build/
+hello-websocket-kotlin/client/build/
+hello-websocket-kotlin/.gradle/
+
+# C# / .NET
+hello-websocket-csharp/*/bin/
+hello-websocket-csharp/*/obj/
+
+# C++
+hello-websocket-cpp/build/
+
+# Dart
+hello-websocket-dart/.dart_tool/
+hello-websocket-dart/.packages
+
+# PHP
+hello-websocket-php/vendor/
+
+# Swift
+hello-websocket-swift/.build/
+hello-websocket-swift/Package.resolved
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+hello-websocket-*/logs/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+# Dependencies
+node_modules/
+vendor/
+.venv/
+__pycache__/
+*.pyc
+.dart_tool/
+.build/
+
+# Build artifacts
+target/
+build/
+dist/
+bin/
+obj/
+*.class
+*.jar
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+
+# Logs
+*.log
+logs/
+log/
+
+# Environment
+.env
+
+# Docker
+docker/smoke_logs/
+
+# OS
+Thumbs.db
+*.swp
+*.swo
+*.orig
+*.rej
 ### STS ###
 .apt_generated
 .classpath

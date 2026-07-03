@@ -1,0 +1,12 @@
+name: hello_websocket_dart
+description: Hello WebSocket Protocol - Dart implementation
+version: 1.0.0
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  crypto: ^3.0.3
+
+dev_dependencies:
+  test: ^1.24.0

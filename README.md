@@ -1,3 +1,152 @@
+# Hello WebSocket
+
+WebSocket server and client implementations in **12 programming languages**, mirroring the [hello-grpc](https://github.com/feuyeux/hello-grpc) project.
+
+Each language implements the same JSON-based WebSocket protocol with four communication patterns mapped from gRPC:
+
+| gRPC Pattern | WebSocket Action |
+|---|---|
+| Unary (Talk) | `echo` — send one message, receive one reply |
+| Server Streaming (TalkOneAnswerMore) | `server_stream` — send CSV indices, receive multiple replies |
+| Client Streaming (TalkMoreAnswerOne) | `client_stream` / `client_stream_end` — send multiple, receive summary |
+| Bidirectional (TalkBidirectional) | `bidi_start` / `bidi` / `bidi_end` — interleaved send/receive |
+
+**Default port:** `9996` (env: `WS_SERVER_PORT`)
+
+## Languages and Libraries
+
+| # | Language | Library | Build Tool | Directory |
+|---|---|---|---|---|
+| 1 | Java | Java-WebSocket + Gson | Maven | `hello-websocket-java/` |
+| 2 | Kotlin | Ktor Server-WS + Ktor Client-WS | Gradle | `hello-websocket-kotlin/` |
+| 3 | Python | websockets | pip | `hello-websocket-python/` |
+| 4 | Go | gorilla/websocket | go modules | `hello-websocket-go/` |
+| 5 | Rust | tokio-tungstenite | cargo | `hello-websocket-rust/` |
+| 6 | C++ | Boost.Beast + nlohmann/json | CMake | `hello-websocket-cpp/` |
+| 7 | C# | System.Net.WebSockets (.NET 9) | dotnet | `hello-websocket-csharp/` |
+| 8 | Dart | shelf_web_socket + web_socket_channel | pub | `hello-websocket-dart/` |
+| 9 | PHP | Ratchet + textalk/websocket | composer | `hello-websocket-php/` |
+| 10 | Swift | NIOWebSocket (swift-nio) | SPM | `hello-websocket-swift/` |
+| 11 | Node.js | ws | npm | `hello-websocket-nodejs/` |
+| 12 | TypeScript | ws + @types/ws | npm | `hello-websocket-ts/` |
+
+## JSON Protocol
+
+**Request:**
+```json
+{
+  "action": "echo|server_stream|client_stream|client_stream_end|bidi_start|bidi|bidi_end",
+  "data": "<language_index or csv>",
+  "meta": "<CLIENT_LANG>"
+}
+```
+
+**Response:**
+```json
+{
+  "status": 200,
+  "results": [{
+    "id": <unix_timestamp>,
+    "type": 0,
+    "kv": {
+      "id": "<uuid>",
+      "idx": "<index>",
+      "data": "<hello>,<answer>",
+      "meta": "<SERVER_LANG>"
+    }
+  }]
+}
+```
+
+## Running Locally
+
+### Python
+```bash
+# Server
+cd hello-websocket-python
+pip install -r requirements.txt
+python server/ws_server.py
+
+# Client (separate terminal)
+python client/ws_client.py
+```
+
+### Go
+```bash
+cd hello-websocket-go
+go run server/ws_server.go
+go run client/ws_client.go
+```
+
+### Node.js
+```bash
+cd hello-websocket-nodejs
+npm install
+node src/server/index.js
+node src/client/index.js
+```
+
+### Java
+```bash
+cd hello-websocket-java
+mvn clean package -DskipTests
+java -jar target/hello-ws-java-server.jar
+java -jar target/hello-ws-java-client.jar
+```
+
+### Rust
+```bash
+cd hello-websocket-rust
+cargo run --bin ws-server
+cargo run --bin ws-client
+```
+
+## Running with Docker
+
+```bash
+# Build all images
+cd docker
+./build_image.sh
+
+# Build specific language
+./build_image.sh python
+
+# Run server
+./run_container.sh server python
+
+# Run client (separate terminal)
+./run_container.sh client python
+
+# Cross-language: Java server + Go client
+./run_container.sh server java
+./run_container.sh client go
+```
+
+## Environment Variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `WS_SERVER_PORT` | `9996` | Server listen port |
+| `WS_SERVER_HOST` | `127.0.0.1` | Server host (client only) |
+
+## Shared Greeting Data
+
+All 12 implementations share the same multilingual greeting dataset:
+
+| Index | Hello | Answer |
+|---|---|---|
+| 0 | Hello | Thank you very much |
+| 1 | Bonjour | Merci beaucoup |
+| 2 | Hola | Muchas Gracias |
+| 3 | こんにちは | どうもありがとう |
+| 4 | Ciao | Mille Grazie |
+| 5 | 안녕하세요 | 대단히 감사합니다 |
+| 6 | 你好 | 非常感谢 |
+| 7 | Olá | Muito Obrigado |
+| 8 | Hallo | Vielen Dank |
+| 9 | Привет | Большое спасибо |
+| 10 | Merhaba | Çok teşekkürler |
+| 11 | Xin chào | Cảm ơn bạn nhiều |
 <!-- markdownlint-disable MD033 MD045 -->
 
 # Hello Websocket

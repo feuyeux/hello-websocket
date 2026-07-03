@@ -1,18 +1,14 @@
 {
-  "name": "flutter_websockets",
+  "name": "hello-websocket-nodejs",
   "version": "1.0.0",
-  "description": "A new Flutter project.",
-  "main": "websocketServer.js",
-  "directories": {
-    "lib": "lib",
-    "test": "test"
-  },
+  "description": "WebSocket server and client for hello-websocket project (Node.js)",
+  "main": "server/ws_server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "server": "node server/ws_server.js",
+    "client": "node client/ws_client.js",
+    "test": "node common/codec.test.js"
   },
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "ws": "^8.14.2"
+    "ws": "^8.18.0"
   }
 }

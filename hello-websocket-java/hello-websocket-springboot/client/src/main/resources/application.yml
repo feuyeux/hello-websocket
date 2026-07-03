@@ -1,3 +1,0 @@
-spring.main.banner-mode: off
-logging.level.root: INFO
-server.port: 8000
