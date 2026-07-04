@@ -44,7 +44,7 @@ async fn handle_connection(stream: tokio::net::TcpStream, _addr: SocketAddr) {
     // Sender task
     let sender_task = tokio::spawn(async move {
         while let Some(data) = rx.recv().await {
-            if ws_sender.send(WsMessage::Binary(data)).await.is_err() {
+            if ws_sender.send(WsMessage::Binary(data.into())).await.is_err() {
                 break;
             }
         }
