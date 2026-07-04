@@ -21,6 +21,6 @@ tokio-tungstenite = "0.29"
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 uuid = { version = "1", features = ["v4"] }
 sha2 = "0.11"
-rand = "0.8"
+rand = "0.10"
 
 [dev-dependencies]
