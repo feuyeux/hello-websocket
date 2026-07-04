@@ -43,7 +43,7 @@ Future<void> _tryConnect(String url) async {
   var randomId = 1;
   Timer.periodic(Duration(milliseconds: randomIntervalMs), (t) {
     if (ws.readyState != WebSocket.open) { t.cancel(); return; }
-    final num = rng.nextInt(9007199254740991);
+    final num = (rng.nextInt(1 << 31) << 32) | rng.nextInt(1 << 32);
     ws.add(randomNumberMsg(randomId, num).encode());
     log('ws-client', 'RANDOM_NUMBER id=$randomId number=$num');
     randomId++;
