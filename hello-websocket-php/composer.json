@@ -1,0 +1,32 @@
+{
+    "name": "org.feuyeux/hello-websocket-php",
+    "description": "Hello WebSocket Protocol - PHP implementation",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2",
+        "cboden/ratchet": "^0.4.4",
+        "ratchet/pawl": "^0.4.1",
+        "react/event-loop": "^1.5"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "files": ["common/Codec.php"],
+        "psr-4": {
+            "HelloWs\\Server\\": "server/",
+            "HelloWs\\Client\\": "client/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "HelloWs\\Test\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "php tests/run_tests.php",
+        "server": "php server/ws_server.php",
+        "client": "php client/ws_client.php"
+    }
+}

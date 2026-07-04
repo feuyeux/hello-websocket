@@ -1,0 +1,15 @@
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build-base
+COPY hello-websocket-csharp /app/hello-websocket-csharp
+WORKDIR /app/hello-websocket-csharp
+RUN dotnet restore hello-websocket-csharp.csproj
+RUN dotnet publish -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS server
+WORKDIR /app
+COPY --from=build-base /app/publish /app
+ENTRYPOINT ["dotnet", "hello-websocket-csharp.dll"]
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS client
+WORKDIR /app
+COPY --from=build-base /app/publish /app
+ENTRYPOINT ["dotnet", "hello-websocket-csharp.dll", "client"]

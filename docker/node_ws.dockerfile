@@ -1,0 +1,21 @@
+FROM node:24-alpine AS build-base
+RUN npm config set registry https://registry.npmmirror.com
+COPY hello-websocket-nodejs /app/hello-websocket-nodejs
+WORKDIR /app/hello-websocket-nodejs
+RUN npm install --unsafe-perm
+
+FROM node:24-alpine AS server
+WORKDIR /app
+COPY --from=build-base /app/hello-websocket-nodejs/package*.json /app/
+COPY --from=build-base /app/hello-websocket-nodejs/node_modules /app/node_modules
+COPY --from=build-base /app/hello-websocket-nodejs/server /app/server
+COPY --from=build-base /app/hello-websocket-nodejs/common /app/common
+ENTRYPOINT ["node", "server/ws_server.js"]
+
+FROM node:24-alpine AS client
+WORKDIR /app
+COPY --from=build-base /app/hello-websocket-nodejs/package*.json /app/
+COPY --from=build-base /app/hello-websocket-nodejs/node_modules /app/node_modules
+COPY --from=build-base /app/hello-websocket-nodejs/client /app/client
+COPY --from=build-base /app/hello-websocket-nodejs/common /app/common
+ENTRYPOINT ["node", "client/ws_client.js"]
