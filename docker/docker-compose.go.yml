@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  ws-server-go:
+    image: feuyeux/ws_server_go:1.0.0
+    ports:
+      - "9898:9898"
+    networks:
+      - ws_network
+
+  ws-client-go:
+    image: feuyeux/ws_client_go:1.0.0
+    environment:
+      - WS_SERVER=ws-server-go
+      - WS_PORT=9898
+    depends_on:
+      - ws-server-go
+    networks:
+      - ws_network
+
+networks:
+  ws_network:
+    driver: bridge

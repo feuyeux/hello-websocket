@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  ws-server-cpp:
+    image: feuyeux/ws_server_cpp:1.0.0
+    ports:
+      - "9898:9898"
+    networks:
+      - ws_network
+
+  ws-client-cpp:
+    image: feuyeux/ws_client_cpp:1.0.0
+    environment:
+      - WS_SERVER=ws-server-cpp
+      - WS_PORT=9898
+    depends_on:
+      - ws-server-cpp
+    networks:
+      - ws_network
+
+networks:
+  ws_network:
+    driver: bridge

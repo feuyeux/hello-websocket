@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  ws-server-rust:
+    image: feuyeux/ws_server_rust:1.0.0
+    ports:
+      - "9898:9898"
+    networks:
+      - ws_network
+
+  ws-client-rust:
+    image: feuyeux/ws_client_rust:1.0.0
+    environment:
+      - WS_SERVER=ws-server-rust
+      - WS_PORT=9898
+    depends_on:
+      - ws-server-rust
+    networks:
+      - ws_network
+
+networks:
+  ws_network:
+    driver: bridge

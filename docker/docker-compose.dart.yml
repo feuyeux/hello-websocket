@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  ws-server-dart:
+    image: feuyeux/ws_server_dart:1.0.0
+    ports:
+      - "9898:9898"
+    networks:
+      - ws_network
+
+  ws-client-dart:
+    image: feuyeux/ws_client_dart:1.0.0
+    environment:
+      - WS_SERVER=ws-server-dart
+      - WS_PORT=9898
+    depends_on:
+      - ws-server-dart
+    networks:
+      - ws_network
+
+networks:
+  ws_network:
+    driver: bridge

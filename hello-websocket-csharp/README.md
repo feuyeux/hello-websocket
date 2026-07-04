@@ -1,0 +1,63 @@
+# Hello WebSocket - C# Implementation
+
+C# implementation of the Hello WebSocket protocol using [System.Net.WebSockets](https://learn.microsoft.com/en-us/dotnet/api/system.net.websockets) (.NET 9).
+
+## Project Structure
+
+```
+hello-websocket-csharp/
+├── hello-websocket-csharp.csproj    # Project file
+├── Program.cs                       # Entry point (server/client mode)
+├── common/
+│   └── Codec.cs                     # Binary protocol codec
+├── server/
+│   └── WsServer.cs                  # WebSocket server
+├── client/
+│   └── WsClient.cs                  # WebSocket client
+├── test/
+│   ├── hello-websocket-csharp-test.csproj
+│   └── CodecTest.cs                 # Codec unit tests
+├── scripts/
+│   ├── build.sh                     # Build with dotnet
+│   ├── run-server.sh                # Run server
+│   └── run-client.sh                # Run client
+└── README.md
+```
+
+## Prerequisites
+
+- **.NET SDK** 9.0+
+
+## Build
+
+```bash
+./scripts/build.sh
+```
+
+Or manually:
+```bash
+dotnet build -c Release
+```
+
+## Run Server
+
+```bash
+./scripts/run-server.sh
+```
+
+Environment variables:
+- `WS_SERVER_PORT` — Port to listen on (default: 9898)
+
+## Run Client
+
+```bash
+./scripts/run-client.sh
+```
+
+Environment variables:
+- `WS_SERVER_HOST` — Server host (default: 127.0.0.1)
+- `WS_SERVER_PORT` — Server port (default: 9898)
+
+## Protocol
+
+See [../PROTOCOL.md](../PROTOCOL.md) for the canonical protocol specification.

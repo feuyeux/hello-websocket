@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  ws-server-csharp:
+    image: feuyeux/ws_server_csharp:1.0.0
+    ports:
+      - "9898:9898"
+    networks:
+      - ws_network
+
+  ws-client-csharp:
+    image: feuyeux/ws_client_csharp:1.0.0
+    environment:
+      - WS_SERVER=ws-server-csharp
+      - WS_PORT=9898
+    depends_on:
+      - ws-server-csharp
+    networks:
+      - ws_network
+
+networks:
+  ws_network:
+    driver: bridge

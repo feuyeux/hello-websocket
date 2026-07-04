@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  ws-server-kotlin:
+    image: feuyeux/ws_server_kotlin:1.0.0
+    ports:
+      - "9898:9898"
+    networks:
+      - ws_network
+
+  ws-client-kotlin:
+    image: feuyeux/ws_client_kotlin:1.0.0
+    environment:
+      - WS_SERVER=ws-server-kotlin
+      - WS_PORT=9898
+    depends_on:
+      - ws-server-kotlin
+    networks:
+      - ws_network
+
+networks:
+  ws_network:
+    driver: bridge

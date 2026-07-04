@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  ws-server-java:
+    image: feuyeux/ws_server_java:1.0.0
+    ports:
+      - "9898:9898"
+    networks:
+      - ws_network
+
+  ws-client-java:
+    image: feuyeux/ws_client_java:1.0.0
+    environment:
+      - WS_SERVER=ws-server-java
+      - WS_PORT=9898
+    depends_on:
+      - ws-server-java
+    networks:
+      - ws_network
+
+networks:
+  ws_network:
+    driver: bridge

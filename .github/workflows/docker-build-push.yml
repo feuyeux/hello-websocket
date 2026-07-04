@@ -1,0 +1,34 @@
+name: Docker Build & Push
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build all images
+        run: |
+          cd docker
+          chmod +x build_image.sh
+          ./build_image.sh --all
+
+      - name: Push all images
+        run: |
+          cd docker
+          chmod +x push_image.sh
+          ./push_image.sh --all

@@ -1,0 +1,23 @@
+version: "3.8"
+
+services:
+  ws-server-python:
+    image: feuyeux/ws_server_python:1.0.0
+    ports:
+      - "9898:9898"
+    networks:
+      - ws_network
+
+  ws-client-python:
+    image: feuyeux/ws_client_python:1.0.0
+    environment:
+      - WS_SERVER=ws-server-python
+      - WS_PORT=9898
+    depends_on:
+      - ws-server-python
+    networks:
+      - ws_network
+
+networks:
+  ws_network:
+    driver: bridge

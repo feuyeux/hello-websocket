@@ -46,6 +46,7 @@ hello-websocket-dart/.packages
 
 # PHP
 hello-websocket-php/vendor/
+hello-websocket-php/.phpunit.result.cache
 
 # Swift
 hello-websocket-swift/.build/
@@ -79,7 +80,6 @@ bin/
 obj/
 *.class
 *.jar
-Cargo.lock
 
 # IDE
 .idea/
@@ -151,11 +151,10 @@ nb-configuration.xml
 # Local environment
 .env
 
-# Flutter
+# Flutter (deprecated)
 android
 .metadata
 analysis_options.yaml
-pubspec.lock
 # Miscellaneous
 *.class
 *.log
@@ -191,7 +190,6 @@ migrate_working_dir/
 /build/
 
 #RUST
-Cargo.lock
 
 hello-websocket-python/ws_env
 
