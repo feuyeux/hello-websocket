@@ -1,4 +1,6 @@
 FROM rust:1.85-slim-bookworm AS build-base
+ENV RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rustup \
+    RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rustup/rustup
 RUN mkdir -p $HOME/.cargo \
     && echo '[source.crates-io]\nreplace-with = "ustc"\n\n[source.ustc]\nregistry = "https://mirrors.ustc.edu.cn/crates.io-index"' > $HOME/.cargo/config
 COPY hello-websocket-rust /app/hello-websocket-rust

@@ -37,11 +37,27 @@ Each Dockerfile has three stages:
 Build Docker images for one or all languages.
 
 ```bash
-./build_image.sh --all                    # Build all language images
-./build_image.sh --language java          # Build Java server + client
+./build_image.sh --all                          # Build all language images (default: 6 per batch)
+./build_image.sh --language java                # Build Java server + client
 ./build_image.sh --language go --component server  # Build only Go server
-./build_image.sh --all --parallel         # Build all in parallel
+./build_image.sh --all --batch-size 1           # Build all languages fully serially
+./build_image.sh --all --batch-size 0           # Build all languages in one fully-parallel group
+./build_image.sh --all --continue               # Build all, skip past failures, report which failed at the end
 ```
+
+Options:
+
+| Flag | Description |
+|---|---|
+| `-l, --language LANG` | Build one language. Valid: `cpp`, `rust`, `java`, `go`, `csharp`, `python`, `nodejs`, `dart`, `kotlin`, `swift`, `php`, `ts`. |
+| `-c, --component TYPE` | `server`, `client`, or `both` (default). |
+| `-a, --all` | Build every language. |
+| `-b, --batch-size N` | Languages per concurrent group; groups run serially. Default `6`. `N=0` puts every language in a single group (fully parallel); `N=1` is fully serial. Clamped to the total language count when `N > total`. |
+| `-k, --continue` | Keep going past per-language failures under `--all` and print a failure summary at the end. Without this, the first failure aborts the whole build. |
+| `-v, --verbose` | Verbose shell tracing. |
+| `-h, --help` | Show usage. |
+
+Only `--batch-size` and `--continue` are honored under `--all`; single `--language` builds always run alone and exit 1 on failure.
 
 ### run_container.sh
 Run a server or client container.

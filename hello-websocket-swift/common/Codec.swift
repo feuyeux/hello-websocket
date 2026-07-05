@@ -5,7 +5,6 @@
 // SHA-256 hash, and message dispatch for all 13 message types.
 
 import Foundation
-import ucrt
 
 // MARK: - SHA-256 Implementation
 
@@ -416,5 +415,4 @@ public func logMsg(_ name: String, _ msg: String) {
     let s = secs % 60
     let dateStr = String(format: "%02d:%02d:%02d", h, m, s)
     print("[\(dateStr)] [INFO] [\(name)] \(msg)")
-    fflush(stdout)
 }

@@ -14,13 +14,17 @@ usage() {
     echo "  -a, --all             Build all language images"
     echo "  -v, --verbose         Enable verbose output"
     echo "  -h, --help            Display this help message"
-    echo "  -j, --parallel        Enable parallel building (default: off)"
+    echo "  -b, --batch-size N    Languages per concurrent group; groups run serially. Default: 6."
+    echo "                         N=0 puts every language in a single group (fully parallel). N=1 is fully serial."
+    echo "  -k, --continue        Keep going past per-language failures and print a failure summary at the end."
     echo
     echo "Examples:"
-    echo "  $0 --all                        # Build all language images"
+    echo "  $0 --all                        # Build all language images, 6 per group (groups serial, group internals parallel)"
     echo "  $0 --language java              # Build Java images"
     echo "  $0 --language java --component server  # Build only Java server image"
-    echo "  $0 --all --parallel             # Build all language images in parallel"
+    echo "  $0 --all --batch-size 1         # Build all languages fully serially"
+    echo "  $0 --all --batch-size 0         # Build all languages in one fully-parallel group (highest concurrency, most memory pressure)"
+    echo "  $0 --all --continue            # Build all, skip past failures, report which failed at the end"
     exit 1
 }
 
@@ -29,8 +33,10 @@ BUILD_ALL=false
 LANGUAGE=""
 COMPONENT="both"
 VERBOSE=false
-PARALLEL=false
+BATCH_SIZE=6
+CONTINUE=false
 PIDS=()
+FAILED_LANGS=()
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -51,8 +57,12 @@ while [[ $# -gt 0 ]]; do
         VERBOSE=true
         shift
         ;;
-    -j | --parallel)
-        PARALLEL=true
+    -b | --batch-size)
+        BATCH_SIZE="$2"
+        shift 2
+        ;;
+    -k | --continue)
+        CONTINUE=true
         shift
         ;;
     -h | --help)
@@ -67,6 +77,12 @@ done
 
 if [[ "$VERBOSE" == true ]]; then
     set -x
+fi
+
+# Validate BATCH_SIZE: must be a non-negative integer
+if ! [[ "$BATCH_SIZE" =~ ^[0-9]+$ ]]; then
+    echo "Error: --batch-size must be a non-negative integer (got '$BATCH_SIZE')."
+    exit 1
 fi
 
 # Check if Docker is running
@@ -121,7 +137,11 @@ get_image_name() {
 build_language() {
     local lang="$1"
     local component="$2"
-    local dockerfile="${lang}_ws.dockerfile"
+    local dockerfile_lang="$lang"
+    if [[ "$lang" == "nodejs" ]]; then
+        dockerfile_lang="node"
+    fi
+    local dockerfile="${dockerfile_lang}_ws.dockerfile"
 
     echo "==== Building $lang ($component) ===="
 
@@ -146,18 +166,31 @@ build_language() {
     echo "$lang build completed successfully"
 }
 
-# Wait for parallel jobs
+# Wait for parallel jobs and report any failures.
+# Each PIDS entry is paired with the language name in PIDS_LANGS (parallel arrays).
+# On CONTINUE=true, failed languages are appended to FAILED_LANGS and the group continues.
+# On CONTINUE=false, the first failure triggers exit 1 (preserves the original strict behaviour).
 wait_for_parallel_jobs() {
     if [ ${#PIDS[@]} -eq 0 ]; then
-        return
+        return 0
     fi
-    echo "Waiting for all build tasks to complete..."
-    for pid in "${PIDS[@]}"; do
+    local failed=0
+    for i in "${!PIDS[@]}"; do
+        local pid="${PIDS[$i]}"
+        local lang="${PIDS_LANGS[$i]}"
         if ! wait "$pid"; then
-            echo "Warning: Process $pid build failed!"
+            if [[ "$CONTINUE" == true ]]; then
+                echo "!! $lang build failed (continuing)"
+                FAILED_LANGS+=("$lang")
+            else
+                echo "Warning: Process $pid ($lang) build failed!"
+                failed=1
+            fi
         fi
     done
     PIDS=()
+    PIDS_LANGS=()
+    return $failed
 }
 
 # Record start time
@@ -166,15 +199,46 @@ start_time=$(date +%s)
 # Main logic
 if [[ "$BUILD_ALL" == true ]]; then
     all_langs=(cpp rust java go csharp python nodejs dart kotlin swift php ts)
-    for lang in "${all_langs[@]}"; do
-        if [[ "$PARALLEL" == true ]]; then
-            build_language "$lang" "$COMPONENT" &
-            PIDS+=($!)
+    total=${#all_langs[@]}
+
+    # Determine effective group size. BATCH_SIZE=0 means "one group with all languages" (fully parallel).
+    # BATCH_SIZE>=1 means up to BATCH_SIZE languages per group; groups run serially, languages within a group run in parallel.
+    eff_group_size=$BATCH_SIZE
+    if [[ "$eff_group_size" -eq 0 ]]; then
+        eff_group_size=$total
+    fi
+    [[ "$eff_group_size" -gt $total ]] && eff_group_size=$total
+
+    num_groups=$(( (total + eff_group_size - 1) / eff_group_size ))
+    for ((g = 0; g < num_groups; g++)); do
+        start=$((g * eff_group_size))
+        end=$((start + eff_group_size))
+        [[ $end -gt $total ]] && end=$total
+        chunk=("${all_langs[@]:start:end-start}")
+        chunk_str="${chunk[*]}"
+        echo ""
+        echo "==== Batch $((g + 1))/$num_groups [$chunk_str] ===="
+        if [[ "$eff_group_size" -eq 1 ]]; then
+            # Single language per group: run it directly. With CONTINUE, swallow failures and record.
+            if [[ "$CONTINUE" == true ]]; then
+                if ! build_language "${chunk[0]}" "$COMPONENT"; then
+                    echo "!! ${chunk[0]} build failed (continuing)"
+                    FAILED_LANGS+=("${chunk[0]}")
+                fi
+            else
+                build_language "${chunk[0]}" "$COMPONENT"
+            fi
         else
-            build_language "$lang" "$COMPONENT"
+            for lang in "${chunk[@]}"; do
+                build_language "$lang" "$COMPONENT" &
+                PIDS+=($!)
+                PIDS_LANGS+=("$lang")
+            done
+            if ! wait_for_parallel_jobs; then
+                exit 1
+            fi
         fi
     done
-    wait_for_parallel_jobs
 elif [[ -n "$LANGUAGE" ]]; then
     validate_language "$LANGUAGE"
     validate_component "$COMPONENT"
@@ -189,4 +253,11 @@ duration=$((end_time - start_time))
 echo ""
 echo "============================================"
 echo "Build completed in ${duration}s"
+if [[ "$BUILD_ALL" == true ]]; then
+    if [[ ${#FAILED_LANGS[@]} -eq 0 ]]; then
+        echo "All languages built successfully."
+    else
+        echo "FAILED (${#FAILED_LANGS[@]}): ${FAILED_LANGS[*]}"
+    fi
+fi
 echo "============================================"

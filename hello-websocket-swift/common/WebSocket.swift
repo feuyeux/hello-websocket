@@ -1,5 +1,4 @@
 import Foundation
-import WinSDK
 
 // MARK: - WebSocket Frame Helpers
 

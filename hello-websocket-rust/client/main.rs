@@ -36,7 +36,7 @@ async fn try_connect(url: &str) -> Result<(), Box<dyn std::error::Error + Send +
 
     // Send HELLO
     let hello = Message::Hello { client_language: CLIENT_LANG.to_string() };
-    ws_sender.send(WsMessage::Binary(hello.encode())).await?;
+    ws_sender.send(WsMessage::Binary(hello.encode().into())).await?;
 
     let sender = std::sync::Arc::new(tokio::sync::Mutex::new(ws_sender));
     let sender_clone = sender.clone();
@@ -49,7 +49,7 @@ async fn try_connect(url: &str) -> Result<(), Box<dyn std::error::Error + Send +
             let num: i64 = rand::random();
             let rn = Message::RandomNumber { id, number: num };
             let mut s = sender_clone.lock().await;
-            if s.send(WsMessage::Binary(rn.encode())).await.is_err() { break; }
+            if s.send(WsMessage::Binary(rn.encode().into())).await.is_err() { break; }
             log("ws-client", &format!("RANDOM_NUMBER id={} number={}", id, num));
             id += 1;
         }
@@ -81,7 +81,7 @@ async fn try_connect(url: &str) -> Result<(), Box<dyn std::error::Error + Send +
                 log("ws-client", &format!("PING ts={}", timestamp_ms));
                 let pong = Message::Pong { timestamp_ms };
                 let mut s = sender.lock().await;
-                let _ = s.send(WsMessage::Binary(pong.encode())).await;
+                let _ = s.send(WsMessage::Binary(pong.encode().into())).await;
                 log("ws-client", &format!("PONG ts={}", timestamp_ms));
             }
             Message::TimeNotification { timestamp_ms, iso8601 } => {
@@ -95,7 +95,7 @@ async fn try_connect(url: &str) -> Result<(), Box<dyn std::error::Error + Send +
                     time_zone: "UTC".to_string(),
                 };
                 let mut s = sender.lock().await;
-                let _ = s.send(WsMessage::Binary(resp.encode())).await;
+                let _ = s.send(WsMessage::Binary(resp.encode().into())).await;
                 log("ws-client", "KISS_RESPONSE sent");
             }
             Message::EchoResponse { status, results } => {
@@ -120,7 +120,7 @@ async fn try_connect(url: &str) -> Result<(), Box<dyn std::error::Error + Send +
     // Send DISCONNECT
     let disconnect = Message::Disconnect { reason: "client shutdown".to_string() };
     let mut s = sender.lock().await;
-    let _ = s.send(WsMessage::Binary(disconnect.encode())).await;
+    let _ = s.send(WsMessage::Binary(disconnect.encode().into())).await;
 
     Ok(())
 }

@@ -3,12 +3,12 @@ COPY hello-websocket-php /app/hello-websocket-php
 WORKDIR /app/hello-websocket-php
 RUN composer install --no-interaction --no-progress --no-scripts --ignore-platform-reqs
 
-FROM php:8.2-cli AS server
+FROM php:8.3-cli AS server
 WORKDIR /app
 COPY --from=build-base /app/hello-websocket-php /app
 ENTRYPOINT ["php", "/app/server/ws_server.php"]
 
-FROM php:8.2-cli AS client
+FROM php:8.3-cli AS client
 WORKDIR /app
 COPY --from=build-base /app/hello-websocket-php /app
 ENTRYPOINT ["php", "/app/client/ws_client.php"]
