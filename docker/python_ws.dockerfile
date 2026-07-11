@@ -1,11 +1,13 @@
 FROM python:3.13-slim AS build-base
 ENV PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ENV PYTHONUNBUFFERED=1
 COPY hello-websocket-python /app/hello-websocket-python
 WORKDIR /app/hello-websocket-python
 RUN pip install -r requirements.txt
 
 FROM python:3.13-slim AS server
 ENV PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY --from=build-base /app/hello-websocket-python /app
 RUN pip install -r requirements.txt
@@ -14,6 +16,7 @@ ENTRYPOINT ["python", "/app/server/ws_server.py"]
 
 FROM python:3.13-slim AS client
 ENV PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY --from=build-base /app/hello-websocket-python /app
 RUN pip install -r requirements.txt

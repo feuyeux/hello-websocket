@@ -164,4 +164,3 @@ func handleMessage(_ state: ClientState, _ msg: WsMessage) {
         logMsg("ws-client", "Unknown message type: \(hex)")
     }
 }
-

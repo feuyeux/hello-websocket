@@ -11,7 +11,9 @@ public class WsServer
 
     public WsServer(int port)
     {
-        _listener.Prefixes.Add($"http://127.0.0.1:{port}/ws/");
+        // Bind to all interfaces so Docker-network clients can reach this server.
+        // "*" is HttpListener's wildcard (matches every IPv4/IPv6 address).
+        _listener.Prefixes.Add($"http://*:{port}/ws/");
     }
 
     public async Task RunAsync()

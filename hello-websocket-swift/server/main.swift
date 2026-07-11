@@ -199,4 +199,3 @@ func handleMessage(_ session: Session, _ msg: WsMessage) {
         session.sendMsg(.error, payload: w.data())
     }
 }
-

@@ -197,3 +197,4 @@ hello-websocket-python/ws_env
 
 arthas-output
 dependency-reduced-pom.xml
+.local/

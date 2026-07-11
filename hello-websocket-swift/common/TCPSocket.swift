@@ -24,8 +24,6 @@ public func closeSocketFD(_ fd: SocketFD) -> Int32 { close(fd) }
 public func lastSocketError() -> Int32 { errno }
 #endif
 
-// MARK: - Socket Errors
-
 public enum SocketError: Error, CustomStringConvertible {
     case socketFailed(Int32)
     case bindFailed(Int32)
@@ -52,8 +50,6 @@ public enum SocketError: Error, CustomStringConvertible {
     }
 }
 
-// MARK: - TCP Socket
-
 public final class TCPSocket: @unchecked Sendable {
     private var fd: SocketFD
     private var closed = false
@@ -73,10 +69,9 @@ public final class TCPSocket: @unchecked Sendable {
         close()
     }
 
-    // MARK: - Server
-
     public static func createServer(port: Int) throws -> TCPSocket {
         #if canImport(WinSDK)
+        _ = wsaInit
         let s = socket(AF_INET, SOCK_STREAM, Int32(IPPROTO_TCP.rawValue))
         #elseif canImport(Glibc)
         let s = Glibc.socket(AF_INET, Int32(SOCK_STREAM.rawValue), Int32(IPPROTO_TCP))
@@ -101,7 +96,6 @@ public final class TCPSocket: @unchecked Sendable {
         addr.sin_family = sa_family_t(AF_INET)
         #endif
         addr.sin_port = htons(UInt16(port))
-        // sin_addr is zero-initialized by default = INADDR_ANY
 
         let rc = withUnsafePointer(to: &addr) { ptr -> Int32 in
             ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { saddr in
@@ -150,8 +144,6 @@ public final class TCPSocket: @unchecked Sendable {
         return TCPSocket(fd: clientFd)
     }
 
-    // MARK: - Client
-
     public static func createClient(host: String, port: Int) throws -> TCPSocket {
         #if canImport(WinSDK)
         _ = wsaInit
@@ -173,7 +165,6 @@ public final class TCPSocket: @unchecked Sendable {
         #endif
         addr.sin_port = htons(UInt16(port))
 
-        // Parse host IP using inet_pton (writes directly into sin_addr)
         let rc = host.withCString { hostPtr -> Int32 in
             withUnsafeMutablePointer(to: &addr.sin_addr) { ipPtr in
                 inet_pton(AF_INET, hostPtr, ipPtr)
@@ -199,8 +190,6 @@ public final class TCPSocket: @unchecked Sendable {
         }
         return TCPSocket(fd: s)
     }
-
-    // MARK: - I/O
 
     public func sendBytes(_ data: [UInt8]) throws -> Int {
         let count = data.count
@@ -235,16 +224,12 @@ public final class TCPSocket: @unchecked Sendable {
         return Array(buf[0..<received])
     }
 
-    // MARK: - Close
-
     public func close() {
         if !closed {
             closed = true
             _ = closeSocketFD(fd)
         }
     }
-
-    // MARK: - Raw HTTP receive (for WebSocket upgrade)
 
     public func recvHTTP(maxLen: Int = 8192) throws -> String {
         var buf = [UInt8](repeating: 0, count: maxLen)
