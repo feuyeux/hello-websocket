@@ -4,9 +4,9 @@ plugins {
 
 dependencies {
     "api"(project(":common"))
-    "implementation"("io.ktor:ktor-server-core:3.0.3")
-    "implementation"("io.ktor:ktor-server-netty:3.0.3")
-    "implementation"("io.ktor:ktor-server-websockets:3.0.3")
+    "implementation"("io.ktor:ktor-server-core:3.5.1")
+    "implementation"("io.ktor:ktor-server-netty:3.5.1")
+    "implementation"("io.ktor:ktor-server-websockets:3.5.1")
 }
 
 application {
