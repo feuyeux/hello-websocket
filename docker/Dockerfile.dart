@@ -1,4 +1,4 @@
-FROM dart:3.9.2 AS build-base
+FROM dart:3.12.2 AS build-base
 ENV PUB_HOSTED_URL=https://pub.flutter-io.cn
 COPY hello-websocket-dart /app/hello-websocket-dart
 WORKDIR /app/hello-websocket-dart

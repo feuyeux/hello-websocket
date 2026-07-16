@@ -1,4 +1,4 @@
-FROM maven:3.9-eclipse-temurin-21 AS build-base
+FROM maven:3-eclipse-temurin-26 AS build-base
 COPY docker/settings.xml /root/.m2/settings.xml
 WORKDIR /app
 COPY hello-websocket-java/pom.xml /app/pom.xml
