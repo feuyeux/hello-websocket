@@ -92,6 +92,7 @@ fi
 # Check that the selected container runtime is available.
 check_runtime() {
     ws_container_runtime_init
+    ws_container_builder_init
 }
 
 # Function to validate language
@@ -144,8 +145,6 @@ build_language() {
 
     echo "==== Building $lang ($component) ===="
 
-    check_runtime
-
     if [[ "$component" == "server" || "$component" == "both" ]]; then
         local img=$(get_image_name "$lang" "server")
         echo "~~~ Building ws server $lang ($img) ~~~"
@@ -193,6 +192,7 @@ wait_for_parallel_jobs() {
 }
 
 # Record start time
+check_runtime
 start_time=$(date +%s)
 
 # Main logic

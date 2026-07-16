@@ -12,6 +12,7 @@ Multi-stage Dockerfiles for all 12 language implementations, plus build/run/push
 | Other supported hosts | Docker |
 
 Set `WS_CONTAINER_RUNTIME=docker` or `WS_CONTAINER_RUNTIME=container` to override selection. The `container` runtime is valid only on Apple-silicon macOS. Its system service is started automatically when needed.
+The build script also starts Apple `container builder` when it is not already running.
 
 Before an Apple `container` client can reach a server port published on the Mac, configure this one-time host DNS mapping:
 

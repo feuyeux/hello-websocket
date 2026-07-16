@@ -1,5 +1,4 @@
 FROM node:24-alpine AS build-base
-RUN npm config set registry https://registry.npmmirror.com
 COPY hello-websocket-nodejs /app/hello-websocket-nodejs
 WORKDIR /app/hello-websocket-nodejs
 RUN npm ci --omit=dev

@@ -58,7 +58,17 @@ ws_container_runtime_init() {
 }
 
 ws_container_build() {
+    ws_container_builder_init
     "$WS_CONTAINER_RUNTIME" build "$@"
+}
+
+ws_container_builder_init() {
+    [[ "$WS_CONTAINER_RUNTIME" == "container" ]] || return 0
+
+    if ! container builder status >/dev/null 2>&1; then
+        echo "Starting Apple container builder..."
+        container builder start
+    fi
 }
 
 ws_container_run() {
