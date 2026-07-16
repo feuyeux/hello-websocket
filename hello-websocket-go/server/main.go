@@ -3,9 +3,11 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -17,7 +19,14 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin:     func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true
+		}
+		u, err := url.Parse(origin)
+		return err == nil && strings.EqualFold(u.Host, r.Host)
+	},
 	ReadBufferSize:  4096,
 	WriteBufferSize: 4096,
 }
@@ -62,7 +71,11 @@ func main() {
 	common.Log("ws-server", fmt.Sprintf("Starting Go WebSocket server on port %d", port))
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/ws", handleWebSocket)
+	path := os.Getenv("WS_PATH")
+	if path == "" {
+		path = "/ws"
+	}
+	mux.HandleFunc(path, handleWebSocket)
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
@@ -102,6 +115,7 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		LastPongTs:  common.NowMs(),
 		conn:        conn,
 	}
+	conn.SetReadLimit(1 << 20)
 
 	common.Log("ws-server", fmt.Sprintf("[%s] session+", session.UserID))
 
@@ -127,8 +141,16 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		msg, err := common.DecodeMessage(data)
 		if err != nil {
 			common.Log("ws-server", fmt.Sprintf("Decode error: %v", err))
-			errMsg := &common.ErrorMsg{Code: common.ErrDecode, Message: err.Error()}
+			unknown := strings.HasPrefix(err.Error(), "unknown message type")
+			code := int32(common.ErrDecode)
+			if unknown {
+				code = common.ErrUnknownMsgType
+			}
+			errMsg := &common.ErrorMsg{Code: code, Message: err.Error()}
 			session.Send(errMsg.Encode())
+			if !unknown {
+				break
+			}
 			continue
 		}
 		handleMessage(session, msg)
@@ -166,7 +188,7 @@ func handleMessage(s *Session, msg *common.Message) {
 			KV: map[string]string{
 				"id":   fmt.Sprintf("%d", req.ID),
 				"idx":  req.Data,
-				"data":  req.Data,
+				"data": req.Data,
 				"meta": s.ClientLanguage,
 			},
 		}
@@ -179,7 +201,7 @@ func handleMessage(s *Session, msg *common.Message) {
 
 	case common.MsgPong:
 		s.mu.Lock()
-		s.LastPongTs = msg.Pong.TimestampMs
+		s.LastPongTs = common.NowMs()
 		s.mu.Unlock()
 		common.Log("ws-server", fmt.Sprintf("PONG ts=%d", msg.Pong.TimestampMs))
 

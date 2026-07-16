@@ -125,7 +125,9 @@ public class WsClient extends WebSocketClient {
         }
 
         Codec.log("ws-client", "Starting Java WebSocket client [version: 1.0.0]");
-        String url = "ws://" + host + ":" + port;
+        String path = System.getenv("WS_PATH");
+        if (path == null || path.isEmpty()) path = "/ws";
+        String url = "ws://" + host + ":" + port + path;
         Codec.log("ws-client", "Connecting to " + url);
 
         for (int attempt = 1; attempt <= 3; attempt++) {

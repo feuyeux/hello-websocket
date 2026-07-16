@@ -1,6 +1,6 @@
 # Hello WebSocket - Dart Implementation
 
-Dart implementation of the Hello WebSocket protocol using [shelf_web_socket](https://pub.dev/packages/shelf_web_socket) (server) and [web_socket_channel](https://pub.dev/packages/web_socket_channel) (client).
+Dart implementation of the Hello WebSocket protocol using the SDK's `dart:io` WebSocket server and client.
 
 ## Project Structure
 
@@ -45,7 +45,8 @@ dart compile exe client/ws_client.dart -o build/ws_client
 ```
 
 Environment variables:
-- `WS_SERVER_PORT` — Port to listen on (default: 9898)
+- `WS_PORT` — Port to listen on (default: 9898)
+- `WS_PATH` — WebSocket path (default: /ws)
 
 ## Run Client
 
@@ -54,8 +55,9 @@ Environment variables:
 ```
 
 Environment variables:
-- `WS_SERVER_HOST` — Server host (default: 127.0.0.1)
-- `WS_SERVER_PORT` — Server port (default: 9898)
+- `WS_SERVER` — Server host (default: 127.0.0.1)
+- `WS_PORT` — Server port (default: 9898)
+- `WS_PATH` — WebSocket path (default: /ws)
 
 ## Protocol
 

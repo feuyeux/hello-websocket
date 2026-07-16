@@ -90,6 +90,7 @@ private:
 class ByteReader {
 public:
     ByteReader(const uint8_t* data, size_t len) : data_(data), len_(len), pos_(0) {}
+    size_t remaining() const { return len_ - pos_; }
 
     uint8_t readU8() {
         check(1); return data_[pos_++];
@@ -113,6 +114,7 @@ public:
     }
     std::map<std::string, std::string> readKV() {
         auto count = readU32();
+        if (count > remaining() / 8) throw std::runtime_error("kv count exceeds remaining payload");
         std::map<std::string, std::string> m;
         for (uint32_t i = 0; i < count; i++) {
             auto key = readString();
@@ -147,7 +149,7 @@ inline Frame decodeFrame(const uint8_t* data, size_t len) {
     uint8_t msgType = data[2];
     uint32_t payloadLen = (static_cast<uint32_t>(data[4]) << 24) | (static_cast<uint32_t>(data[5]) << 16)
                         | (static_cast<uint32_t>(data[6]) << 8) | data[7];
-    if (payloadLen > len - HEADER_LEN) throw std::runtime_error("truncated payload");
+    if (payloadLen != len - HEADER_LEN) throw std::runtime_error("payload length mismatch");
     return {msgType, std::vector<uint8_t>(data + HEADER_LEN, data + HEADER_LEN + payloadLen)};
 }
 
@@ -264,6 +266,7 @@ inline Message decodeMessage(const uint8_t* data, size_t len) {
         case MSG_ECHO_RESPONSE: {
             m.echoStatus = r.readI32();
             auto count = r.readU32();
+            if (count > r.remaining() / 13) throw std::runtime_error("result count exceeds remaining payload");
             for (uint32_t i = 0; i < count; i++) {
                 EchoResult er;
                 er.idx = r.readI64();

@@ -71,8 +71,12 @@ async def handle_client(websocket):
                 msg = decode_message(raw)
             except Exception as e:
                 log("ws-server", f"Decode error: {e}")
-                err = ErrorMsg(code=ERR_DECODE, message=str(e))
+                unknown = str(e).startswith("unknown message type")
+                err = ErrorMsg(code=ERR_UNKNOWN_MSG_TYPE if unknown else ERR_DECODE, message=str(e))
                 await send_msg(err.encode())
+                if not unknown:
+                    await websocket.close(code=1002, reason="invalid protocol frame")
+                    break
                 continue
 
             if msg.type == MSG_HELLO:
@@ -94,7 +98,7 @@ async def handle_client(websocket):
                 log("ws-server", f"KISS_RESPONSE lang={kr.language} enc={kr.encoding} tz={kr.time_zone}")
 
             elif msg.type == MSG_PONG:
-                last_pong_ts = msg.pong.timestamp_ms
+                last_pong_ts = now_ms()
                 log("ws-server", f"PONG ts={msg.pong.timestamp_ms}")
 
             elif msg.type == MSG_RANDOM_NUMBER:

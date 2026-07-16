@@ -50,11 +50,9 @@ class ByteWriter {
     writeU32(v) { this.buf.push((v >>> 24) & 0xFF, (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF); }
     writeI32(v) { this.writeU32(v >>> 0); }
     writeI64(v) {
-        // Handle as two 32-bit parts (BigInt not needed for practical values)
-        const lo = v & 0xFFFFFFFF;
-        const hi = Math.floor(v / 0x100000000);
-        this.writeU32(hi);
-        this.writeU32(lo);
+        const n = BigInt.asUintN(64, BigInt(v));
+        this.writeU32(Number((n >> 32n) & 0xFFFFFFFFn));
+        this.writeU32(Number(n & 0xFFFFFFFFn));
     }
     writeString(s) {
         const b = Buffer.from(s, 'utf-8');
@@ -74,9 +72,16 @@ class ByteWriter {
 class ByteReader {
     constructor(data) { this.data = data; this.pos = 0; }
 
-    readU8() { return this.data[this.pos++]; }
-    readU16() { const v = (this.data[this.pos] << 8) | this.data[this.pos + 1]; this.pos += 2; return v; }
+    remaining() { return this.data.length - this.pos; }
+    ensure(n, field) {
+        if (!Number.isSafeInteger(n) || n < 0 || n > this.remaining()) {
+            throw new Error(`${field} requires ${n} bytes, only ${this.remaining()} remain`);
+        }
+    }
+    readU8() { this.ensure(1, 'u8'); return this.data[this.pos++]; }
+    readU16() { this.ensure(2, 'u16'); const v = (this.data[this.pos] << 8) | this.data[this.pos + 1]; this.pos += 2; return v; }
     readU32() {
+        this.ensure(4, 'u32');
         const v = (this.data[this.pos] * 0x1000000) + (this.data[this.pos + 1] << 16) +
                   (this.data[this.pos + 2] << 8) + this.data[this.pos + 3];
         this.pos += 4;
@@ -84,18 +89,20 @@ class ByteReader {
     }
     readI32() { return this.readU32() | 0; }
     readI64() {
-        const hi = this.readU32();
-        const lo = this.readU32();
-        return hi * 0x100000000 + lo;
+        const hi = BigInt(this.readU32());
+        const lo = BigInt(this.readU32());
+        return BigInt.asIntN(64, (hi << 32n) | lo);
     }
     readString() {
         const ln = this.readU32();
+        this.ensure(ln, 'string');
         const s = this.data.toString('utf-8', this.pos, this.pos + ln);
         this.pos += ln;
         return s;
     }
     readKV() {
         const count = this.readU32();
+        if (count > Math.floor(this.remaining() / 8)) throw new Error(`kv count ${count} exceeds remaining payload`);
         const m = {};
         for (let i = 0; i < count; i++) {
             const k = this.readString();
@@ -124,8 +131,8 @@ function decodeFrame(data) {
     if (data[1] !== VERSION) throw new Error(`bad version: 0x${data[1].toString(16)}`);
     const msgType = data[2];
     const payloadLen = data.readUInt32BE(4);
-    if (payloadLen > data.length - HEADER_LEN) {
-        throw new Error(`truncated payload: declared ${payloadLen}, available ${data.length - HEADER_LEN}`);
+    if (payloadLen !== data.length - HEADER_LEN) {
+        throw new Error(`payload length mismatch: declared ${payloadLen}, available ${data.length - HEADER_LEN}`);
     }
     return { msgType, payload: data.slice(HEADER_LEN, HEADER_LEN + payloadLen) };
 }
@@ -243,6 +250,7 @@ function decodeMessage(data) {
         case MSG_ECHO_RESPONSE:
             msg.echoResp = { status: r.readI32(), results: [] };
             const count = r.readU32();
+            if (count > Math.floor(r.remaining() / 13)) throw new Error(`result count ${count} exceeds remaining payload`);
             for (let i = 0; i < count; i++) {
                 msg.echoResp.results.push({ idx: r.readI64(), type: r.readU8(), kv: r.readKV() });
             }

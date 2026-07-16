@@ -10,7 +10,8 @@ function main() {
     const port = parseInt(process.env.WS_PORT) || C.PORT;
     C.log('ws-server', `Starting Node.js WebSocket server on port ${port}`);
 
-    const wss = new WebSocket.Server({ port });
+    const pathName = process.env.WS_PATH || '/ws';
+    const wss = new WebSocket.Server({ port, path: pathName, maxPayload: 1024 * 1024 });
 
     wss.on('connection', (ws, req) => {
         const userId = req.headers['userid'] || crypto.randomUUID();
@@ -23,15 +24,15 @@ function main() {
 
         // Background tasks
         const pingTimer = setInterval(() => {
-            ws.send(C.encodePing(C.nowMs()));
+            if (ws.readyState === WebSocket.OPEN) ws.send(C.encodePing(C.nowMs()));
         }, C.PING_INTERVAL);
 
         const timeTimer = setInterval(() => {
-            ws.send(C.encodeTimeNotification(C.nowMs(), C.nowISO()));
+            if (ws.readyState === WebSocket.OPEN) ws.send(C.encodeTimeNotification(C.nowMs(), C.nowISO()));
         }, C.TIME_INTERVAL);
 
         const kissTimer = setInterval(() => {
-            ws.send(C.encodeKissRequest(os.type(), os.release(), os.hostname(), os.arch()));
+            if (ws.readyState === WebSocket.OPEN) ws.send(C.encodeKissRequest(os.type(), os.release(), os.hostname(), os.arch()));
         }, C.KISS_INTERVAL);
 
         const timeoutTimer = setInterval(() => {
@@ -64,7 +65,7 @@ function main() {
                         break;
 
                     case C.MSG_PONG:
-                        lastPongTs = msg.pong.timestampMs;
+                        lastPongTs = C.nowMs();
                         C.log('ws-server', `PONG ts=${msg.pong.timestampMs}`);
                         break;
 
@@ -90,7 +91,9 @@ function main() {
                 }
             } catch (e) {
                 C.log('ws-server', `Decode error: ${e.message}`);
-                ws.send(C.encodeError(C.ERR_DECODE, e.message));
+                const unknown = e.message.startsWith('unknown message type');
+                ws.send(C.encodeError(unknown ? C.ERR_UNKNOWN_MSG_TYPE : C.ERR_DECODE, e.message));
+                if (!unknown) ws.close(1002, 'invalid protocol frame');
             }
         });
 

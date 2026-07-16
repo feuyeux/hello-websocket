@@ -111,15 +111,24 @@ export class ByteReader {
 
   constructor(data: Buffer) { this.data = data; }
 
-  readU8(): number { return this.data[this.pos++]; }
+  remaining(): number { return this.data.length - this.pos; }
+  private ensure(size: number, field: string): void {
+    if (!Number.isSafeInteger(size) || size < 0 || size > this.remaining()) {
+      throw new Error(`${field} requires ${size} bytes, only ${this.remaining()} remain`);
+    }
+  }
+
+  readU8(): number { this.ensure(1, 'u8'); return this.data[this.pos++]; }
 
   readU16(): number {
+    this.ensure(2, 'u16');
     const v = (this.data[this.pos] << 8) | this.data[this.pos + 1];
     this.pos += 2;
     return v;
   }
 
   readU32(): number {
+    this.ensure(4, 'u32');
     const v = (this.data[this.pos] * 0x1000000) + (this.data[this.pos + 1] << 16) +
               (this.data[this.pos + 2] << 8) + this.data[this.pos + 3];
     this.pos += 4;
@@ -131,11 +140,12 @@ export class ByteReader {
   readI64(): bigint {
     const hi = BigInt(this.readU32());
     const lo = BigInt(this.readU32());
-    return (hi << 32n) | lo;
+    return BigInt.asIntN(64, (hi << 32n) | lo);
   }
 
   readString(): string {
     const ln = this.readU32();
+    this.ensure(ln, 'string');
     const s = this.data.toString('utf-8', this.pos, this.pos + ln);
     this.pos += ln;
     return s;
@@ -143,6 +153,7 @@ export class ByteReader {
 
   readKV(): Record<string, string> {
     const count = this.readU32();
+    if (count > Math.floor(this.remaining() / 8)) throw new Error(`kv count ${count} exceeds remaining payload`);
     const m: Record<string, string> = {};
     for (let i = 0; i < count; i++) {
       const k = this.readString();
@@ -171,8 +182,8 @@ export function decodeFrame(data: Buffer): { msgType: number; payload: Buffer } 
   if (data[1] !== VERSION) throw new Error(`bad version: 0x${data[1].toString(16)}`);
   const msgType = data[2];
   const payloadLen = data.readUInt32BE(4);
-  if (payloadLen > data.length - HEADER_LEN) {
-    throw new Error(`truncated payload: declared ${payloadLen}, available ${data.length - HEADER_LEN}`);
+  if (payloadLen !== data.length - HEADER_LEN) {
+    throw new Error(`payload length mismatch: declared ${payloadLen}, available ${data.length - HEADER_LEN}`);
   }
   return { msgType, payload: data.subarray(HEADER_LEN, HEADER_LEN + payloadLen) };
 }
@@ -213,6 +224,7 @@ export function decodeMessage(data: Buffer): Message {
     case MSG_ECHO_RESPONSE: {
       const status = r.readI32();
       const count = r.readU32();
+      if (count > Math.floor(r.remaining() / 13)) throw new Error(`result count ${count} exceeds remaining payload`);
       const results: EchoResult[] = [];
       for (let i = 0; i < count; i++) results.push({ idx: r.readI64(), type: r.readU8(), kv: r.readKV() });
       return { type: MSG_ECHO_RESPONSE, echoStatus: status, echoResults: results };

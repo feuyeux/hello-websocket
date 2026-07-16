@@ -2,7 +2,7 @@ FROM node:24-alpine AS build-base
 RUN npm config set registry https://registry.npmmirror.com
 COPY hello-websocket-ts /app/hello-websocket-ts
 WORKDIR /app/hello-websocket-ts
-RUN npm install --unsafe-perm
+RUN npm ci
 
 FROM node:24-alpine AS server
 WORKDIR /app

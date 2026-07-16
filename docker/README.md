@@ -2,6 +2,25 @@
 
 Multi-stage Dockerfiles for all 12 language implementations, plus build/run/push scripts and docker-compose orchestration.
 
+## Container Runtime
+
+`build_image.sh`, `run_container.sh`, `push_image.sh`, and `smoke_test_all.sh` automatically select a runtime:
+
+| Host | Runtime |
+|---|---|
+| Apple-silicon macOS with Apple `container` installed | Apple `container` |
+| Other supported hosts | Docker |
+
+Set `WS_CONTAINER_RUNTIME=docker` or `WS_CONTAINER_RUNTIME=container` to override selection. The `container` runtime is valid only on Apple-silicon macOS. Its system service is started automatically when needed.
+
+Before an Apple `container` client can reach a server port published on the Mac, configure this one-time host DNS mapping:
+
+```bash
+sudo container system dns create host.container.internal --localhost 203.0.113.113
+```
+
+The run and smoke-test scripts check this mapping and use `host.container.internal`; Docker continues to use `host.docker.internal`. Docker Compose remains Docker-only because Apple `container` has no Compose-compatible interface.
+
 ## Image Naming
 
 - Server images: `feuyeux/ws_server_<lang>:1.0.0`
@@ -13,18 +32,18 @@ Multi-stage Dockerfiles for all 12 language implementations, plus build/run/push
 
 | Language | Dockerfile |
 |---|---|
-| C++ | `cpp_ws.dockerfile` |
-| Rust | `rust_ws.dockerfile` |
-| Java | `java_ws.dockerfile` |
-| Go | `go_ws.dockerfile` |
-| C# | `csharp_ws.dockerfile` |
-| Python | `python_ws.dockerfile` |
-| Node.js | `node_ws.dockerfile` |
-| Dart | `dart_ws.dockerfile` |
-| Kotlin | `kotlin_ws.dockerfile` |
-| Swift | `swift_ws.dockerfile` |
-| PHP | `php_ws.dockerfile` |
-| TypeScript | `ts_ws.dockerfile` |
+| C++ | `Dockerfile.cpp` |
+| Rust | `Dockerfile.rust` |
+| Java | `Dockerfile.java` |
+| Go | `Dockerfile.go` |
+| C# | `Dockerfile.csharp` |
+| Python | `Dockerfile.python` |
+| Node.js | `Dockerfile.node` |
+| Dart | `Dockerfile.dart` |
+| Kotlin | `Dockerfile.kotlin` |
+| Swift | `Dockerfile.swift` |
+| PHP | `Dockerfile.php` |
+| TypeScript | `Dockerfile.ts` |
 
 Each Dockerfile has three stages:
 1. **build-base** — compiles the common/, server/, and client/ modules
@@ -43,6 +62,7 @@ Build Docker images for one or all languages.
 ./build_image.sh --all --batch-size 1           # Build all languages fully serially
 ./build_image.sh --all --batch-size 0           # Build all languages in one fully-parallel group
 ./build_image.sh --all --continue               # Build all, skip past failures, report which failed at the end
+WS_CONTAINER_RUNTIME=container ./build_image.sh --language java --component server
 ```
 
 Options:
@@ -65,6 +85,7 @@ Run a server or client container.
 ```bash
 ./run_container.sh --language java --component server
 ./run_container.sh --language go --component client
+WS_CONTAINER_RUNTIME=docker ./run_container.sh --language java --component server
 ```
 
 ### push_image.sh
@@ -102,6 +123,7 @@ Starts one server + one client for a single language. Available for all 12 langu
 
 | Variable | Default | Description |
 |---|---|---|
-| `WS_SERVER_PORT` | `9898` | Server listen port |
+| `WS_PORT` | `9898` | Server and client port |
+| `WS_PATH` | `/ws` | WebSocket endpoint path |
 | `WS_SERVER` | `host.docker.internal` | Server host (client containers) |
 | `WS_PORT` | `9898` | Server port (client containers) |

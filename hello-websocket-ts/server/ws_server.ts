@@ -21,7 +21,9 @@ interface Session {
   timers: NodeJS.Timeout[];
 }
 
-const wss = new WebSocketServer({ port: PORT });
+const port = Number.parseInt(process.env.WS_PORT || String(PORT), 10);
+const path = process.env.WS_PATH || '/ws';
+const wss = new WebSocketServer({ port, path, maxPayload: 1024 * 1024 });
 
 wss.on('connection', (ws: WebSocket, req) => {
   const userId = req.headers['userid'] as string || `ts-${randomUUID().substring(0, 8)}`;
@@ -76,8 +78,11 @@ wss.on('connection', (ws: WebSocket, req) => {
     try {
       msg = decodeMessage(data);
     } catch (e) {
-      log('ws-server', `Decode error: ${(e as Error).message}`);
-      ws.send(encodeMessage({ type: MSG_ERROR, errorCode: ERR_DECODE, errorMessage: (e as Error).message }));
+      const message = (e as Error).message;
+      const unknown = message.startsWith('unknown message type');
+      log('ws-server', `Decode error: ${message}`);
+      ws.send(encodeMessage({ type: MSG_ERROR, errorCode: unknown ? ERR_UNKNOWN_MSG_TYPE : ERR_DECODE, errorMessage: message }));
+      if (!unknown) ws.close(1002, 'invalid protocol frame');
       return;
     }
 
@@ -111,7 +116,7 @@ wss.on('connection', (ws: WebSocket, req) => {
         break;
 
       case MSG_PONG:
-        session.lastPongTs = msg.timestampMs;
+        session.lastPongTs = nowMs();
         log('ws-server', `PONG ts=${msg.timestampMs}`);
         break;
 
@@ -148,7 +153,7 @@ wss.on('connection', (ws: WebSocket, req) => {
 });
 
 wss.on('listening', () => {
-  log('ws-server', `Starting TypeScript WebSocket server on port ${PORT}`);
+  log('ws-server', `Starting TypeScript WebSocket server on port ${port}`);
 });
 
 process.on('SIGINT', () => {

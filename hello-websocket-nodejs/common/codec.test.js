@@ -30,7 +30,7 @@ test('roundTripBonjour', () => {
 
 test('roundTripEchoRequest', () => {
     const msg = C.decodeMessage(C.encodeEchoRequest(42, 'Python', 'hello'));
-    assert.strictEqual(msg.echoReq.id, 42);
+    assert.strictEqual(msg.echoReq.id, 42n);
     assert.strictEqual(msg.echoReq.meta, 'Python');
     assert.strictEqual(msg.echoReq.data, 'hello');
 });
@@ -50,9 +50,9 @@ test('roundTripKiss', () => {
 
 test('roundTripPingPong', () => {
     const msg = C.decodeMessage(C.encodePing(1700000000000));
-    assert.strictEqual(msg.ping.timestampMs, 1700000000000);
+    assert.strictEqual(msg.ping.timestampMs, 1700000000000n);
     const msg2 = C.decodeMessage(C.encodePong(1700000000001));
-    assert.strictEqual(msg2.pong.timestampMs, 1700000000001);
+    assert.strictEqual(msg2.pong.timestampMs, 1700000000001n);
 });
 
 test('roundTripTimeNotification', () => {
@@ -62,8 +62,8 @@ test('roundTripTimeNotification', () => {
 
 test('roundTripRandomHash', () => {
     const msg = C.decodeMessage(C.encodeRandomNumber(99, 42));
-    assert.strictEqual(msg.random.id, 99);
-    assert.strictEqual(msg.random.number, 42);
+    assert.strictEqual(msg.random.id, 99n);
+    assert.strictEqual(msg.random.number, 42n);
     const msg2 = C.decodeMessage(C.encodeHashResponse(99, '7688b6ef5a'));
     assert.strictEqual(msg2.hash.hashHex, '7688b6ef5a');
 });
@@ -95,6 +95,18 @@ test('hashNumber', () => {
     const h = C.hashNumber(42);
     assert.strictEqual(h.length, 10);
     assert.strictEqual(h, C.hashNumber(42));
+});
+
+test('signedI64Boundaries', () => {
+    for (const value of [-(1n << 63n), -1n, (1n << 63n) - 1n]) {
+        const msg = C.decodeMessage(C.encodeRandomNumber(1n, value));
+        assert.strictEqual(msg.random.number, value);
+    }
+});
+
+test('truncatedStringRejected', () => {
+    const malformed = Buffer.from([0x48, 1, 1, 0, 0, 0, 0, 4, 0, 0, 0, 8]);
+    assert.throws(() => C.decodeMessage(malformed));
 });
 
 console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);

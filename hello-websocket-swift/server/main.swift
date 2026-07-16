@@ -7,10 +7,10 @@ final class Session: @unchecked Sendable {
     let socket: TCPSocket
     let userId: String
     let sessionId: String
-    var clientLanguage = "unknown"
+    private var _clientLanguage = "unknown"
     let connectedAt: Int64
-    var lastPongTs: Int64
-    var active = true
+    private var _lastPongTs: Int64
+    private var _active = true
     private let lock = NSLock()
 
     init(socket: TCPSocket, userId: String) {
@@ -18,18 +18,28 @@ final class Session: @unchecked Sendable {
         self.userId = userId.isEmpty ? "swift-\(nowMs())" : userId
         self.sessionId = String(nowMs())
         self.connectedAt = nowMs()
-        self.lastPongTs = nowMs()
+        self._lastPongTs = nowMs()
+    }
+
+    var active: Bool { lock.lock(); defer { lock.unlock() }; return _active }
+    var clientLanguage: String {
+        get { lock.lock(); defer { lock.unlock() }; return _clientLanguage }
+        set { lock.lock(); _clientLanguage = newValue; lock.unlock() }
+    }
+    var lastPongTs: Int64 {
+        get { lock.lock(); defer { lock.unlock() }; return _lastPongTs }
+        set { lock.lock(); _lastPongTs = newValue; lock.unlock() }
     }
 
     func send(_ data: [UInt8]) {
         lock.lock()
         defer { lock.unlock() }
-        guard active else { return }
+        guard _active else { return }
         do {
             let wsFrame = wsEncodeBinaryFrame(data, masked: false)
             _ = try socket.sendBytes(wsFrame)
         } catch {
-            active = false
+            _active = false
         }
     }
 
@@ -40,8 +50,8 @@ final class Session: @unchecked Sendable {
     func close() {
         lock.lock()
         defer { lock.unlock() }
-        if active {
-            active = false
+        if _active {
+            _active = false
             socket.close()
         }
     }
@@ -104,10 +114,10 @@ while true {
             Thread.sleep(forTimeInterval: 5.0)
             guard session.active else { return }
             let w = ByteWriter()
-            w.writeString("Windows NT")
+            w.writeString(ProcessInfo.processInfo.operatingSystemVersionString)
+            w.writeString(ProcessInfo.processInfo.operatingSystemVersionString)
             w.writeString("unknown")
-            w.writeString("unknown")
-            w.writeString("AMD64")
+            w.writeString(ProcessInfo.processInfo.environment["PROCESSOR_ARCHITECTURE"] ?? "unknown")
             session.sendMsg(.kissRequest, payload: w.data())
         }
     }.start()
@@ -129,7 +139,7 @@ while true {
     Thread {
         while session.active {
             do {
-                let payload = try wsReadFrame(session.socket)
+                let payload = try wsReadFrame(session.socket, expectMasked: true)
                 let msg = try decodeMessage(payload)
                 handleMessage(session, msg)
             } catch {
@@ -171,7 +181,7 @@ func handleMessage(_ session: Session, _ msg: WsMessage) {
         logMsg("ws-server", "KISS_RESPONSE lang=\(msg.kissLanguage ?? "") enc=\(msg.kissEncoding ?? "") tz=\(msg.kissTimeZone ?? "")")
 
     case .pong:
-        session.lastPongTs = msg.timestampMs ?? nowMs()
+        session.lastPongTs = nowMs()
 
     case .randomNumber:
         let num = msg.randomNumber ?? 0

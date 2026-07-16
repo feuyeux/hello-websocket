@@ -5,6 +5,10 @@ cd "$(
 )/" || exit
 set -e
 
+SCRIPT_DIR="$(pwd -P)"
+# shellcheck source=container_runtime.sh
+source "$SCRIPT_DIR/container_runtime.sh"
+
 # Function to display usage information
 usage() {
     echo "Usage: $0 [options]"
@@ -84,9 +88,9 @@ get_image_name() {
     local lang="$1"
     local comp="$2"
     if [[ "$lang" == "nodejs" ]]; then
-        echo "feuyeux/ws_${comp}_node:1.0.0"
+        echo "feuyeux/ws_${comp}_node:${IMAGE_TAG:-1.0.0}"
     else
-        echo "feuyeux/ws_${comp}_${lang}:1.0.0"
+        echo "feuyeux/ws_${comp}_${lang}:${IMAGE_TAG:-1.0.0}"
     fi
 }
 
@@ -104,25 +108,29 @@ get_container_name() {
 # Validate inputs
 validate_language "$LANGUAGE"
 validate_component "$COMPONENT"
+ws_container_runtime_init
 
 # Set variables
 NAME=$(get_container_name "$LANGUAGE" "$COMPONENT")
 IMG=$(get_image_name "$LANGUAGE" "$COMPONENT")
 
-# Remove existing container if present
-if docker ps -a --format '{{.Names}}' | grep -Eq "^${NAME}$"; then
-    echo "Removing existing container ${NAME}..."
-    docker rm -f "$NAME"
+# Remove any existing container; both runtimes return non-zero when it is absent.
+ws_container_remove "$NAME" >/dev/null 2>&1 || true
+
+SERVER_HOST="host.docker.internal"
+if [[ "$COMPONENT" == "client" && "$WS_CONTAINER_RUNTIME" == "container" ]]; then
+    ws_container_require_host_domain
+    SERVER_HOST="host.container.internal"
 fi
 
 if [[ "$COMPONENT" == "server" ]]; then
     echo "Running $LANGUAGE server..."
     echo "Container: $NAME, Image: $IMG"
-    docker run -d --name "$NAME" -p 9898:9898 "$IMG"
-    echo "Server started. View logs: docker logs -f $NAME"
-    echo "Stop server: docker stop $NAME"
+    ws_container_run -d --name "$NAME" -p 9898:9898 "$IMG"
+    echo "Server started. View logs: ${WS_CONTAINER_RUNTIME} logs $NAME"
+    echo "Stop server: ${WS_CONTAINER_RUNTIME} stop $NAME"
 elif [[ "$COMPONENT" == "client" ]]; then
     echo "Running $LANGUAGE client..."
     echo "Container: $NAME, Image: $IMG"
-    docker run -it --rm --name "$NAME" -e WS_SERVER=host.docker.internal -e WS_PORT=9898 "$IMG"
+    ws_container_run -it --rm --name "$NAME" -e WS_SERVER="$SERVER_HOST" -e WS_PORT=9898 "$IMG"
 fi

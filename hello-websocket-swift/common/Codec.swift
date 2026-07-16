@@ -174,6 +174,7 @@ public final class ByteReader {
 
     public init(_ data: [UInt8]) { self.data = data }
     public init(_ data: Data) { self.data = Array(data) }
+    public var remaining: Int { data.count - pos }
 
     public func readU8() throws -> UInt8 {
         guard pos + 1 <= data.count else { throw CodecError.eof("u8 at \(pos)") }
@@ -206,6 +207,7 @@ public final class ByteReader {
     }
     public func readKv() throws -> [(String, String)] {
         let count = Int(try readU32())
+        guard count <= remaining / 8 else { throw CodecError.eof("kv count \(count) exceeds remaining payload") }
         var m: [(String, String)] = []
         for _ in 0..<count {
             let k = try readString()
@@ -270,7 +272,7 @@ public func decodeFrame(_ data: [UInt8]) throws -> (MsgType, [UInt8]) {
     }
     let payloadLen = (UInt32(data[4]) << 24) | (UInt32(data[5]) << 16) | (UInt32(data[6]) << 8) | UInt32(data[7])
     let avail = data.count - WsProtocol.headerLen
-    guard Int(payloadLen) <= avail else {
+    guard Int(payloadLen) == avail else {
         throw CodecError.truncatedPayload(declared: Int(payloadLen), available: avail)
     }
     let payload = Array(data[WsProtocol.headerLen..<WsProtocol.headerLen+Int(payloadLen)])
@@ -324,6 +326,7 @@ public func decodeMessage(_ data: [UInt8]) throws -> WsMessage {
     case .echoResponse:
         msg.echoStatus = try r.readI32()
         let count = Int(try r.readU32())
+        guard count <= r.remaining / 13 else { throw CodecError.eof("result count \(count) exceeds remaining payload") }
         var results: [(idx: Int64, type: UInt8, kv: [(String, String)])] = []
         for _ in 0..<count {
             let idx = try r.readI64()

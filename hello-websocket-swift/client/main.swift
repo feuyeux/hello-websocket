@@ -5,24 +5,30 @@ import HelloWebSocket
 
 final class ClientState: @unchecked Sendable {
     let socket: TCPSocket
-    var active = true
-    var connected = false
+    private var _active = true
+    private var _connected = false
     private let lock = NSLock()
 
     init(socket: TCPSocket) {
         self.socket = socket
     }
 
+    var active: Bool { lock.lock(); defer { lock.unlock() }; return _active }
+    var connected: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return _connected }
+        set { lock.lock(); _connected = newValue; lock.unlock() }
+    }
+
     func send(_ data: [UInt8]) {
         lock.lock()
         defer { lock.unlock() }
-        guard active else { return }
+        guard _active else { return }
         do {
             let wsFrame = wsEncodeBinaryFrame(data, masked: true)
             _ = try socket.sendBytes(wsFrame)
         } catch {
             logMsg("ws-client", "Send error: \(error)")
-            active = false
+            _active = false
         }
     }
 
@@ -33,7 +39,7 @@ final class ClientState: @unchecked Sendable {
     func close() {
         lock.lock()
         defer { lock.unlock() }
-        active = false
+        _active = false
         socket.close()
     }
 }
@@ -83,7 +89,7 @@ func tryConnect(host: String, port: Int, attempt: Int, maxAttempts: Int) {
         // Receive loop
         while state.active {
             do {
-                let payload = try wsReadFrame(state.socket)
+                let payload = try wsReadFrame(state.socket, expectMasked: false)
                 let msg = try decodeMessage(payload)
                 handleMessage(state, msg)
             } catch {

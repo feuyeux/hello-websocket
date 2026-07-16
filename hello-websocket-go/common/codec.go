@@ -13,8 +13,8 @@ import (
 
 const (
 	Port            = 9898
-	Magic     byte  = 0x48
-	Version   byte  = 0x01
+	Magic      byte = 0x48
+	Version    byte = 0x01
 	HeaderLen       = 8
 	ServerLang      = "GO"
 	ClientLang      = "GO"
@@ -39,7 +39,7 @@ const (
 
 // Error codes
 const (
-	ErrDecode            int32 = 0x01
+	ErrDecode           int32 = 0x01
 	ErrUnknownMsgType   int32 = 0x02
 	ErrTruncatedPayload int32 = 0x03
 	ErrBadMagic         int32 = 0x04
@@ -50,11 +50,11 @@ const (
 
 // Intervals
 const (
-	PingInterval       = 1 * time.Second
-	SessionTimeout     = 60 * time.Second
-	TimeInterval       = 5 * time.Second
-	RandomInterval     = 5 * time.Second
-	KissInterval       = 5 * time.Second
+	PingInterval   = 1 * time.Second
+	SessionTimeout = 60 * time.Second
+	TimeInterval   = 5 * time.Second
+	RandomInterval = 5 * time.Second
+	KissInterval   = 5 * time.Second
 )
 
 // ─── Primitive Encoders ──────────────────────────────────────────────────
@@ -109,6 +109,8 @@ type Reader struct {
 	data []byte
 	pos  int
 }
+
+func (r *Reader) Remaining() int { return len(r.data) - r.pos }
 
 func NewReader(data []byte) *Reader {
 	return &Reader{data: data}
@@ -173,7 +175,10 @@ func (r *Reader) ReadKV() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := make(map[string]string, count)
+	if uint64(count) > uint64(r.Remaining()/8) {
+		return nil, fmt.Errorf("kv count %d exceeds remaining payload", count)
+	}
+	m := make(map[string]string, int(count))
 	for i := uint32(0); i < count; i++ {
 		k, err := r.ReadString()
 		if err != nil {
@@ -213,8 +218,8 @@ func DecodeFrame(data []byte) (msgType byte, payload []byte, err error) {
 	}
 	msgType = data[2]
 	payloadLen := binary.BigEndian.Uint32(data[4:])
-	if int(payloadLen) > len(data)-HeaderLen {
-		return 0, nil, fmt.Errorf("truncated payload: declared %d, available %d", payloadLen, len(data)-HeaderLen)
+	if int(payloadLen) != len(data)-HeaderLen {
+		return 0, nil, fmt.Errorf("payload length mismatch: declared %d, available %d", payloadLen, len(data)-HeaderLen)
 	}
 	payload = data[HeaderLen : HeaderLen+int(payloadLen)]
 	return msgType, payload, nil
@@ -320,7 +325,10 @@ func DecodeEchoResponse(r *Reader) (*EchoResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	results := make([]EchoResult, 0, count)
+	if uint64(count) > uint64(r.Remaining()/13) {
+		return nil, fmt.Errorf("result count %d exceeds remaining payload", count)
+	}
+	results := make([]EchoResult, 0, int(count))
 	for i := uint32(0); i < count; i++ {
 		idx, err := r.ReadI64()
 		if err != nil {
@@ -558,20 +566,20 @@ func DecodeErrorMsg(r *Reader) (*ErrorMsg, error) {
 // ─── Message Dispatch ────────────────────────────────────────────────────
 
 type Message struct {
-	Type     byte
-	Hello    *Hello
-	Bonjour  *Bonjour
-	EchoReq  *EchoRequest
-	EchoResp *EchoResponse
-	KissReq  *KissRequest
-	KissResp *KissResponse
-	Ping     *Ping
-	Pong     *Pong
-	TimeNotif *TimeNotification
-	Random   *RandomNumber
-	Hash     *HashResponse
+	Type       byte
+	Hello      *Hello
+	Bonjour    *Bonjour
+	EchoReq    *EchoRequest
+	EchoResp   *EchoResponse
+	KissReq    *KissRequest
+	KissResp   *KissResponse
+	Ping       *Ping
+	Pong       *Pong
+	TimeNotif  *TimeNotification
+	Random     *RandomNumber
+	Hash       *HashResponse
 	Disconnect *Disconnect
-	Error    *ErrorMsg
+	Error      *ErrorMsg
 }
 
 func DecodeMessage(data []byte) (*Message, error) {

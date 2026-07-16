@@ -327,7 +327,7 @@ hello-websocket/
     docker-compose.<lang>.yml         # Per-language: server + client (12 files).
     tls/                              # TLS certs for secure mode.
     smoke_test_all.sh                 # Cross-language smoke test.
-    <lang>_ws.dockerfile              # Per-language multi-stage Dockerfile (12 files).
+    Dockerfile.<lang>                 # Per-language multi-stage Dockerfile (12 files).
   diagram/
     hello-websocket.svg               # Architecture diagram.
     protocol-sequence.svg             # Sequence diagram of the canonical protocol.
@@ -428,13 +428,13 @@ Examples: `feuyeux/ws_server_java:1.0.0`, `feuyeux/ws_client_go:1.0.0`.
 
 ### 5.2 Per-Language Multi-Stage Dockerfile
 
-Each `<lang>_ws.dockerfile` has stages:
+Each `Dockerfile.<lang>` has stages:
 
 1. build-base - contains all tools to compile the application (Maven/Go/Cargo/npm/etc.). Compiles the common/, server/, and client/ modules.
 2. server stage - copies the server artifact, exposes port 9898, sets ENTRYPOINT.
 3. client stage - copies the client artifact, sets ENTRYPOINT (server address via env var WS_SERVER and WS_PORT).
 
-Example (docker/java_ws.dockerfile, modeled on docker/java_grpc.dockerfile):
+Example (`docker/Dockerfile.java`):
 
 ```dockerfile
 FROM maven:3.9-eclipse-temurin-25 AS build-base
@@ -529,7 +529,7 @@ These three are rewritten first because they already exist and Java/Netty is the
 Each gets the full section 4 treatment: common codec, server, client, scripts, codec tests.
 
 ### Phase 4: Docker system
-- Write 12 `<lang>_ws.dockerfile` files.
+- Write 12 `Dockerfile.<lang>` files.
 - Write `build_image.sh`, `run_container.sh`, `push_image.sh`, `smoke_test_all.sh`.
 - Write `docker-compose.yml` (all-up) and 12 `docker-compose.<lang>.yml`.
 - Write `docker/README.md`.
@@ -550,10 +550,9 @@ The plan is complete when ALL of the following hold:
 2. **Every language implements the full canonical protocol** from `PROTOCOL.md`: handshake (HELLO/BONJOUR), echo (ECHO_REQUEST/ECHO_RESPONSE), kiss (KISS_REQUEST/KISS_RESPONSE), ping/pong (1s interval, 60s session timeout), time broadcast (TIME_NOTIFICATION every 5s), random/hash (RANDOM_NUMBER every 5s, HASH_RESPONSE with SHA-256 first 10 hex chars).
 3. **Cross-language interop**: any language server can talk to any language client and complete a full protocol exchange. Verified by `docker/smoke_test_all.sh`.
 4. **Every language has codec unit tests** that pass: round-trip encode/decode for every message type, byte-level HELLO frame validation against section 2.9, negative tests for bad magic/version/truncated payload.
-5. **Dockerization complete**: 12 `<lang>_ws.dockerfile` multi-stage builds, `build_image.sh`, `run_container.sh`, `push_image.sh`, images named `feuyeux/ws_server_<lang>:1.0.0` and `feuyeux/ws_client_<lang>:1.0.0`.
+5. **Dockerization complete**: 12 `Dockerfile.<lang>` multi-stage builds, `build_image.sh`, `run_container.sh`, `push_image.sh`, images named `feuyeux/ws_server_<lang>:1.0.0` and `feuyeux/ws_client_<lang>:1.0.0`.
 6. **docker-compose orchestration**: root `docker-compose.yml` (all-up: 1 server + 11 clients) and 12 per-language `docker-compose.<lang>.yml` files.
 7. **CI workflows**: `.github/workflows/build-test.yml` (12-language matrix) and `docker-build-push.yml`, plus `dependabot.yml`.
 8. **Diagrams**: `diagram/hello-websocket.svg` (architecture) and `diagram/protocol-sequence.svg`.
 9. **Root README.md** updated with the 12-language matrix table, quickstart, and links to each subproject.
 10. **PROTOCOL.md** exists at repo root as the canonical contract.
-

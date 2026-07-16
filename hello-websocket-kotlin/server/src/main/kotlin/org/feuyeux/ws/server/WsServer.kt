@@ -16,13 +16,14 @@ import java.util.concurrent.atomic.AtomicLong
 
 fun main() {
     val port = System.getenv("WS_PORT")?.toIntOrNull() ?: PORT
+    val path = System.getenv("WS_PATH") ?: "/ws"
 
     log("ws-server", "Starting Kotlin WebSocket server on port $port")
 
     embeddedServer(Netty, port, host = "0.0.0.0") {
-        install(WebSockets)
+        install(WebSockets) { maxFrameSize = 1024L * 1024L }
         routing {
-            webSocket("/") {
+            webSocket(path) {
                 handleClient(this)
             }
         }
@@ -82,6 +83,7 @@ suspend fun handleClient(ws: WebSocketServerSession) = coroutineScope {
             if (nowMs() - lastPongTs.get() > SESSION_TIMEOUT_MS) {
                 log("ws-server", "[$userId] session timeout")
                 active.set(false)
+                try { ws.close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "session timeout")) } catch (_: Exception) {}
                 break
             }
         }
@@ -98,7 +100,9 @@ suspend fun handleClient(ws: WebSocketServerSession) = coroutineScope {
                 msg = decodeMessage(data)
             } catch (e: Exception) {
                 log("ws-server", "Decode error: ${e.message}")
-                ws.send(Frame.Binary(true, errorMsg(ERR_DECODE, e.message ?: "decode error").encode()))
+                val unknown = e.message?.startsWith("unknown message type") == true
+                ws.send(Frame.Binary(true, errorMsg(if (unknown) ERR_UNKNOWN_MSG_TYPE else ERR_DECODE, e.message ?: "decode error").encode()))
+                if (!unknown) ws.close(CloseReason(CloseReason.Codes.PROTOCOL_ERROR, "invalid protocol frame"))
                 continue
             }
 
@@ -128,7 +132,7 @@ suspend fun handleClient(ws: WebSocketServerSession) = coroutineScope {
                 }
 
                 MSG_PONG -> {
-                    lastPongTs.set(msg.timestampMs)
+                    lastPongTs.set(nowMs())
                 }
 
                 MSG_RANDOM_NUMBER -> {

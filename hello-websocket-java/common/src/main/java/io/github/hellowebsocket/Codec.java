@@ -116,6 +116,7 @@ public final class Codec {
         private int pos;
 
         public ByteReader(byte[] data) { this.data = data; this.pos = 0; }
+        public int remaining() { return data.length - pos; }
 
         public int readU8() throws DecodeException {
             if (pos + 1 > data.length) throw new DecodeException("unexpected end of data reading u8");
@@ -159,6 +160,7 @@ public final class Codec {
 
         public Map<String, String> readKV() throws DecodeException {
             long count = readU32();
+            if (count > remaining() / 8) throw new DecodeException("kv count " + count + " exceeds remaining payload");
             Map<String, String> m = new LinkedHashMap<>((int) count);
             for (long i = 0; i < count; i++) {
                 String k = readString();
@@ -199,8 +201,8 @@ public final class Codec {
         byte msgType = data[2];
         long payloadLen = ((long)(data[4] & 0xFF) << 24) | ((long)(data[5] & 0xFF) << 16)
                         | ((long)(data[6] & 0xFF) << 8) | (data[7] & 0xFF);
-        if (payloadLen > data.length - HEADER_LEN)
-            throw new DecodeException("truncated payload: declared " + payloadLen + ", available " + (data.length - HEADER_LEN));
+        if (payloadLen != data.length - HEADER_LEN)
+            throw new DecodeException("payload length mismatch: declared " + payloadLen + ", available " + (data.length - HEADER_LEN));
         byte[] payload = new byte[(int) payloadLen];
         System.arraycopy(data, HEADER_LEN, payload, 0, (int) payloadLen);
         return new Frame(msgType, payload);
@@ -261,6 +263,7 @@ public final class Codec {
             case MSG_ECHO_RESPONSE -> {
                 m.echoStatus = r.readI32();
                 long count = r.readU32();
+                if (count > r.remaining() / 13) throw new DecodeException("result count " + count + " exceeds remaining payload");
                 m.echoResults = new EchoResult[(int) count];
                 for (int i = 0; i < count; i++) {
                     long idx = r.readI64();

@@ -91,7 +91,7 @@ bool tryConnect(const std::string& host, uint16_t port) {
     // Receive loop
     try {
         while (active) {
-            WSFrame frame = wsRecvFrame(ws.sock);
+            WSFrame frame = wsRecvFrame(ws.sock, false);
             if (!frame.isValid || frame.isClose) break;
 
             Message msg;
@@ -185,7 +185,7 @@ bool tryConnect(const std::string& host, uint16_t port) {
         sendFrame(m.encode());
     }
 
-    wsSendClose(ws.sock);
+    wsSendControl(ws.sock, 0x08, {}, true);
     ws.close();
     log("ws-client", "Disconnected");
     return true;

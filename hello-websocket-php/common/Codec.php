@@ -85,7 +85,7 @@ class ByteWriter
 
     public function writeString(string $s): void
     {
-        $b = utf8_encode($s);
+        $b = $s;
         $this->writeU32(strlen($b));
         $this->buf .= $b;
     }
@@ -120,8 +120,18 @@ class ByteReader
         $this->len = strlen($data);
     }
 
+    public function remaining(): int { return $this->len - $this->pos; }
+
+    private function requireBytes(int $size, string $field): void
+    {
+        if ($size < 0 || $size > $this->remaining()) {
+            throw new \InvalidArgumentException("$field requires $size bytes, only {$this->remaining()} remain");
+        }
+    }
+
     public function readU8(): int
     {
+        $this->requireBytes(1, 'u8');
         $v = ord($this->data[$this->pos]);
         $this->pos++;
         return $v;
@@ -129,6 +139,7 @@ class ByteReader
 
     public function readU16(): int
     {
+        $this->requireBytes(2, 'u16');
         $v = unpack('n', substr($this->data, $this->pos, 2))[1];
         $this->pos += 2;
         return $v;
@@ -136,6 +147,7 @@ class ByteReader
 
     public function readU32(): int
     {
+        $this->requireBytes(4, 'u32');
         $v = unpack('N', substr($this->data, $this->pos, 4))[1];
         $this->pos += 4;
         return $v;
@@ -143,6 +155,7 @@ class ByteReader
 
     public function readI32(): int
     {
+        $this->requireBytes(4, 'i32');
         $v = unpack('N', substr($this->data, $this->pos, 4))[1];
         $this->pos += 4;
         // Convert to signed
@@ -154,6 +167,7 @@ class ByteReader
 
     public function readI64(): int
     {
+        $this->requireBytes(8, 'i64');
         $high = unpack('N', substr($this->data, $this->pos, 4))[1];
         $low = unpack('N', substr($this->data, $this->pos + 4, 4))[1];
         $this->pos += 8;
@@ -170,6 +184,7 @@ class ByteReader
     public function readString(): string
     {
         $ln = $this->readU32();
+        $this->requireBytes($ln, 'string');
         $s = substr($this->data, $this->pos, $ln);
         $this->pos += $ln;
         return $s;
@@ -179,6 +194,9 @@ class ByteReader
     public function readKv(): array
     {
         $count = $this->readU32();
+        if ($count > intdiv($this->remaining(), 8)) {
+            throw new \InvalidArgumentException("kv count $count exceeds remaining payload");
+        }
         $m = [];
         for ($i = 0; $i < $count; $i++) {
             $k = $this->readString();
@@ -217,8 +235,8 @@ function decode_frame(string $data): array
     }
     $msgType = ord($data[2]);
     $payloadLen = unpack('N', substr($data, 4, 4))[1];
-    if ($payloadLen > $len - HEADER_LEN) {
-        throw new \InvalidArgumentException("truncated payload: declared $payloadLen, available " . ($len - HEADER_LEN));
+    if ($payloadLen !== $len - HEADER_LEN) {
+        throw new \InvalidArgumentException("payload length mismatch: declared $payloadLen, available " . ($len - HEADER_LEN));
     }
     return [$msgType, substr($data, HEADER_LEN, $payloadLen)];
 }
@@ -345,6 +363,9 @@ function decode_message(string $data): Message
         case MSG_ECHO_RESPONSE:
             $msg->echoStatus = $r->readI32();
             $count = $r->readU32();
+            if ($count > intdiv($r->remaining(), 13)) {
+                throw new \InvalidArgumentException("result count $count exceeds remaining payload");
+            }
             $msg->echoResults = [];
             for ($i = 0; $i < $count; $i++) {
                 $idx = $r->readI64();

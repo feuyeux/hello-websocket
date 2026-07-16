@@ -2,5 +2,5 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 echo "Building hello-websocket-kotlin..."
-./gradlew clean build -x test
+gradle clean build --no-daemon
 echo "Build complete."

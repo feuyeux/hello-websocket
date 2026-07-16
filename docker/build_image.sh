@@ -5,6 +5,10 @@ cd "$(
 )/" || exit
 set -e
 
+SCRIPT_DIR="$(pwd -P)"
+# shellcheck source=container_runtime.sh
+source "$SCRIPT_DIR/container_runtime.sh"
+
 # Function to display usage information
 usage() {
     echo "Usage: $0 [options]"
@@ -85,14 +89,9 @@ if ! [[ "$BATCH_SIZE" =~ ^[0-9]+$ ]]; then
     exit 1
 fi
 
-# Check if Docker is running
-check_docker() {
-    if ! docker info >/dev/null 2>&1; then
-        echo "Error: Docker does not appear to be running. Please start Docker and try again."
-        exit 1
-    else
-        echo "Docker is running, proceeding with build..."
-    fi
+# Check that the selected container runtime is available.
+check_runtime() {
+    ws_container_runtime_init
 }
 
 # Function to validate language
@@ -127,9 +126,9 @@ get_image_name() {
     local lang="$1"
     local comp="$2"
     if [[ "$lang" == "nodejs" ]]; then
-        echo "feuyeux/ws_${comp}_node:1.0.0"
+        echo "feuyeux/ws_${comp}_node:${IMAGE_TAG:-1.0.0}"
     else
-        echo "feuyeux/ws_${comp}_${lang}:1.0.0"
+        echo "feuyeux/ws_${comp}_${lang}:${IMAGE_TAG:-1.0.0}"
     fi
 }
 
@@ -141,16 +140,16 @@ build_language() {
     if [[ "$lang" == "nodejs" ]]; then
         dockerfile_lang="node"
     fi
-    local dockerfile="${dockerfile_lang}_ws.dockerfile"
+    local dockerfile="Dockerfile.${dockerfile_lang}"
 
     echo "==== Building $lang ($component) ===="
 
-    check_docker
+    check_runtime
 
     if [[ "$component" == "server" || "$component" == "both" ]]; then
         local img=$(get_image_name "$lang" "server")
         echo "~~~ Building ws server $lang ($img) ~~~"
-        docker build --no-cache -f "$dockerfile" \
+        ws_container_build --no-cache -f "$dockerfile" \
             --build-arg PROJECT_ROOT="${PROJECT_ROOT}" \
             --target server -t "$img" "${PROJECT_ROOT}"
     fi
@@ -158,7 +157,7 @@ build_language() {
     if [[ "$component" == "client" || "$component" == "both" ]]; then
         local img=$(get_image_name "$lang" "client")
         echo "~~~ Building ws client $lang ($img) ~~~"
-        docker build --no-cache -f "$dockerfile" \
+        ws_container_build --no-cache -f "$dockerfile" \
             --build-arg PROJECT_ROOT="${PROJECT_ROOT}" \
             --target client -t "$img" "${PROJECT_ROOT}"
     fi

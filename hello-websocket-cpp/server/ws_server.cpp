@@ -121,6 +121,7 @@ void handleClient(socket_t clientSock, const std::string& userId) {
             if (nowMs() - lastPongTs.load() > static_cast<int64_t>(SESSION_TIMEOUT_MS)) {
                 log("ws-server", "[" + userId + "] session timeout");
                 active = false;
+                hws_shutdown(clientSock);
                 break;
             }
         }
@@ -129,18 +130,20 @@ void handleClient(socket_t clientSock, const std::string& userId) {
     // Receive loop — wrapped so threads are ALWAYS joined before return
     try {
         while (active) {
-            WSFrame frame = wsRecvFrame(clientSock);
+            WSFrame frame = wsRecvFrame(clientSock, true);
             if (!frame.isValid || frame.isClose) break;
 
             Message msg;
             try {
                 msg = decodeMessage(frame.payload.data(), frame.payload.size());
             } catch (const std::exception& e) {
+                const bool unknown = std::string(e.what()).find("unknown message type") == 0;
                 Message err{};
                 err.type = MSG_ERROR;
-                err.errorCode = ERR_DECODE;
+                err.errorCode = unknown ? ERR_UNKNOWN_MSG_TYPE : ERR_DECODE;
                 err.errorMessage = e.what();
                 sendFrame(err.encode());
+                if (!unknown) active = false;
                 continue;
             }
 
@@ -179,7 +182,7 @@ void handleClient(socket_t clientSock, const std::string& userId) {
                     break;
 
                 case MSG_PONG:
-                    lastPongTs.store(msg.timestampMs);
+                    lastPongTs.store(nowMs());
                     break;
 
                 case MSG_RANDOM_NUMBER:

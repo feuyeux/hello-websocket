@@ -16,7 +16,8 @@ const host = process.env.WS_SERVER || '127.0.0.1';
 const port = parseInt(process.env.WS_PORT || String(PORT), 10);
 
 log('ws-client', 'Starting TypeScript WebSocket client [version: 1.0.0]');
-const url = `ws://${host}:${port}`;
+const path = process.env.WS_PATH || '/ws';
+const url = `ws://${host}:${port}${path}`;
 log('ws-client', `Connecting to ${url}`);
 
 for (let attempt = 1; attempt <= 3; attempt++) {

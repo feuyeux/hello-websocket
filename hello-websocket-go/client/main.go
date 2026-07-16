@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -28,9 +29,13 @@ func main() {
 	}
 
 	common.Log("ws-client", fmt.Sprintf("Starting Go WebSocket client [version: 1.0.0]"))
-	common.Log("ws-client", fmt.Sprintf("Connecting to ws://%s:%d/ws", host, port))
+	path := os.Getenv("WS_PATH")
+	if path == "" {
+		path = "/ws"
+	}
+	common.Log("ws-client", fmt.Sprintf("Connecting to ws://%s:%d%s", host, port, path))
 
-	url := fmt.Sprintf("ws://%s:%d/ws", host, port)
+	url := fmt.Sprintf("ws://%s:%d%s", host, port, path)
 	header := http.Header{}
 	header.Set("userId", "go-client-"+uuid.New().String()[:8])
 
@@ -40,19 +45,21 @@ func main() {
 		os.Exit(1)
 	}
 	defer conn.Close()
+	conn.SetReadLimit(1 << 20)
+	writer := &safeWriter{conn: conn}
 
 	common.Log("ws-client", "Connected")
 
 	// Send HELLO
 	hello := &common.Hello{ClientLanguage: common.ClientLang}
-	if err := conn.WriteMessage(websocket.BinaryMessage, hello.Encode()); err != nil {
+	if err := writer.Write(hello.Encode()); err != nil {
 		common.Log("ws-client", fmt.Sprintf("Send HELLO error: %v", err))
 		os.Exit(1)
 	}
 
 	// Background task: random number
 	done := make(chan struct{})
-	go randomTask(conn, done)
+	go randomTask(writer, done)
 
 	// Graceful shutdown
 	sigCh := make(chan os.Signal, 1)
@@ -61,7 +68,7 @@ func main() {
 		<-sigCh
 		common.Log("ws-client", "Shutting down...")
 		disconnect := &common.Disconnect{Reason: "client shutdown"}
-		conn.WriteMessage(websocket.BinaryMessage, disconnect.Encode())
+		writer.Write(disconnect.Encode())
 		close(done)
 		conn.Close()
 		os.Exit(0)
@@ -78,12 +85,23 @@ func main() {
 			common.Log("ws-client", fmt.Sprintf("Decode error: %v", err))
 			continue
 		}
-		handleMessage(conn, msg)
+		handleMessage(writer, msg)
 	}
 	close(done)
 }
 
-func handleMessage(conn *websocket.Conn, msg *common.Message) {
+type safeWriter struct {
+	conn *websocket.Conn
+	mu   sync.Mutex
+}
+
+func (w *safeWriter) Write(data []byte) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.conn.WriteMessage(websocket.BinaryMessage, data)
+}
+
+func handleMessage(writer *safeWriter, msg *common.Message) {
 	switch msg.Type {
 	case common.MsgBonjour:
 		common.Log("ws-client", fmt.Sprintf("BONJOUR server_language=%s", msg.Bonjour.ServerLanguage))
@@ -91,7 +109,7 @@ func handleMessage(conn *websocket.Conn, msg *common.Message) {
 	case common.MsgPing:
 		common.Log("ws-client", fmt.Sprintf("PING ts=%d", msg.Ping.TimestampMs))
 		pong := &common.Pong{TimestampMs: msg.Ping.TimestampMs}
-		conn.WriteMessage(websocket.BinaryMessage, pong.Encode())
+		writer.Write(pong.Encode())
 		common.Log("ws-client", fmt.Sprintf("PONG ts=%d", pong.TimestampMs))
 
 	case common.MsgTimeNotification:
@@ -105,7 +123,7 @@ func handleMessage(conn *websocket.Conn, msg *common.Message) {
 			Encoding: "UTF-8",
 			TimeZone: time.Now().Location().String(),
 		}
-		conn.WriteMessage(websocket.BinaryMessage, resp.Encode())
+		writer.Write(resp.Encode())
 		common.Log("ws-client", fmt.Sprintf("KISS_RESPONSE lang=%s enc=%s tz=%s", resp.Language, resp.Encoding, resp.TimeZone))
 
 	case common.MsgEchoResponse:
@@ -126,7 +144,7 @@ func handleMessage(conn *websocket.Conn, msg *common.Message) {
 	}
 }
 
-func randomTask(conn *websocket.Conn, done chan struct{}) {
+func randomTask(writer *safeWriter, done chan struct{}) {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	id := int64(1)
 	ticker := time.NewTicker(common.RandomInterval)
@@ -138,7 +156,9 @@ func randomTask(conn *websocket.Conn, done chan struct{}) {
 		case <-ticker.C:
 			num := rng.Int63()
 			rn := &common.RandomNumber{ID: id, Number: num}
-			conn.WriteMessage(websocket.BinaryMessage, rn.Encode())
+			if err := writer.Write(rn.Encode()); err != nil {
+				return
+			}
 			common.Log("ws-client", fmt.Sprintf("RANDOM_NUMBER id=%d number=%d", id, num))
 			id++
 		}

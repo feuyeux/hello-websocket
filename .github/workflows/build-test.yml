@@ -1,5 +1,12 @@
 name: Build & Test
 
+permissions:
+  contents: read
+
+concurrency:
+  group: build-test-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: ["main", "source"]
@@ -7,6 +14,15 @@ on:
     branches: ["main", "source"]
 
 jobs:
+  dependency-automation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate dependency automation coverage
+        run: ruby scripts/validate-dependency-automation.rb
+      - name: Lint GitHub Actions workflows
+        uses: docker://rhysd/actionlint:1.7.7
+
   # ─── Go ──────────────────────────────────────────────
   go:
     runs-on: ubuntu-latest
@@ -16,7 +32,8 @@ jobs:
         with:
           go-version: '1.23'
       - run: cd hello-websocket-go && go build ./...
-      - run: cd hello-websocket-go && go test ./...
+      - run: cd hello-websocket-go && go test -race ./...
+      - run: cd hello-websocket-go && go vet ./...
 
   # ─── Python ──────────────────────────────────────────
   python:
@@ -26,7 +43,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - run: cd hello-websocket-python && pip install -r requirements.txt pytest
+      - run: cd hello-websocket-python && pip install -r requirements-dev.txt
       - run: cd hello-websocket-python && python -m pytest common/codec_test.py -v
 
   # ─── Node.js ─────────────────────────────────────────
@@ -37,8 +54,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: cd hello-websocket-nodejs && npm install
+      - run: cd hello-websocket-nodejs && npm ci
       - run: cd hello-websocket-nodejs && npm test
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install websockets
+      - name: Node server / Python reference client
+        run: |
+          WS_PORT=9898 node hello-websocket-nodejs/server/ws_server.js >node-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid 2>/dev/null || true' EXIT
+          sleep 2
+          python tests/reference_client.py
 
   # ─── TypeScript ──────────────────────────────────────
   ts:
@@ -48,8 +76,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: cd hello-websocket-ts && npm install
+      - run: cd hello-websocket-ts && npm ci
       - run: cd hello-websocket-ts && npm test
+      - run: cd hello-websocket-ts && npm run build
 
   # ─── Java ────────────────────────────────────────────
   java:
@@ -79,8 +108,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cd hello-websocket-rust && cargo build --verbose
-      - run: cd hello-websocket-rust && cargo test --verbose
+      - run: cd hello-websocket-rust && cargo fmt --check
+      - run: cd hello-websocket-rust && cargo clippy --locked --all-targets -- -D warnings
+      - run: cd hello-websocket-rust && cargo test --locked --verbose
 
   # ─── C++ ─────────────────────────────────────────────
   cpp:
@@ -100,8 +130,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
-      - run: cd hello-websocket-csharp && dotnet build
-      - run: cd hello-websocket-csharp && dotnet test test/hello-websocket-csharp-test.csproj
+      - run: cd hello-websocket-csharp && dotnet restore test/hello-websocket-csharp-test.csproj --locked-mode
+      - run: cd hello-websocket-csharp && dotnet build --no-restore
+      - run: cd hello-websocket-csharp && dotnet test test/hello-websocket-csharp-test.csproj --no-restore
 
   # ─── Dart ────────────────────────────────────────────
   dart:
@@ -111,8 +142,9 @@ jobs:
       - uses: dart-lang/setup-dart@v1
         with:
           sdk: '3.9.2'
-      - run: cd hello-websocket-dart && dart pub get
+      - run: cd hello-websocket-dart && dart pub get --enforce-lockfile
       - run: cd hello-websocket-dart && dart test common/codec_test.dart
+      - run: cd hello-websocket-dart && dart analyze
 
   # ─── PHP ─────────────────────────────────────────────
   php:
@@ -126,15 +158,16 @@ jobs:
       - run: cd hello-websocket-php && composer install --no-interaction --no-progress
       - run: cd hello-websocket-php && composer test
 
-  # ─── Swift (Windows-only — uses WinSDK) ──────────────
+  # ─── Swift ────────────────────────────────────────────
   swift:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Install Swift
-        run: |
-          choco install swift -y --version=6.1.0 --allow-empty-checksums
-      - name: Build
-        run: cd hello-websocket-swift && swift build
-      - name: Test
-        run: cd hello-websocket-swift && swift test
+      - uses: swift-actions/setup-swift@v2
+        with:
+          swift-version: "6.1"
+      - run: cd hello-websocket-swift && swift test

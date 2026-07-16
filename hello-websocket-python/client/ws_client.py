@@ -15,7 +15,8 @@ from common.codec import *
 
 
 async def run_client(host: str, port: int):
-    url = f"ws://{host}:{port}"
+    path = os.environ.get("WS_PATH", "/ws")
+    url = f"ws://{host}:{port}{path}"
     user_id = f"python-client-{uuid.uuid4().hex[:8]}"
 
     log("ws-client", f"Starting Python WebSocket client [version: 1.0.0]")
@@ -59,7 +60,7 @@ async def run_client(host: str, port: int):
                     log("ws-client", f"PING ts={msg.ping.timestamp_ms}")
                     pong = Pong(timestamp_ms=msg.ping.timestamp_ms)
                     await ws.send(pong.encode())
-                    log("ws-client", f"PONG ts={msg.pong.timestamp_ms}")
+                    log("ws-client", f"PONG ts={pong.timestamp_ms}")
 
                 elif msg.type == MSG_TIME_NOTIFICATION:
                     log("ws-client", f"TIME_NOTIFICATION ts={msg.time_notif.timestamp_ms} iso={msg.time_notif.iso8601}")

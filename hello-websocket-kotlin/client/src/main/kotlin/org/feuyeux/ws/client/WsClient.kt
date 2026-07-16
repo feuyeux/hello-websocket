@@ -38,7 +38,7 @@ fun main() = runBlocking {
 
 suspend fun tryConnect(host: String, port: Int): Boolean {
     val client = HttpClient(CIO) {
-        install(WebSockets)
+        install(WebSockets) { maxFrameSize = 1024L * 1024L }
     }
 
     val userId = "kotlin-client-${nowMs()}"
@@ -49,7 +49,7 @@ suspend fun tryConnect(host: String, port: Int): Boolean {
             method = HttpMethod.Get,
             host = host,
             port = port,
-            path = "/",
+            path = System.getenv("WS_PATH") ?: "/ws",
             request = { header("userId", userId) }
         ) {
             log("ws-client", "Connected")

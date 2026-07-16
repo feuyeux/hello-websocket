@@ -12,7 +12,8 @@ void main() async {
   final p = portEnv != null ? int.tryParse(portEnv) ?? port : port;
 
   log('ws-client', 'Starting Dart WebSocket client [version: 1.0.0]');
-  final url = 'ws://$host:$p';
+  final path = Platform.environment['WS_PATH'] ?? '/ws';
+  final url = 'ws://$host:$p$path';
   log('ws-client', 'Connecting to $url');
 
   for (int attempt = 1; attempt <= 3; attempt++) {
@@ -42,7 +43,10 @@ Future<void> _tryConnect(String url) async {
   final rng = Random();
   var randomId = 1;
   Timer.periodic(Duration(milliseconds: randomIntervalMs), (t) {
-    if (ws.readyState != WebSocket.open) { t.cancel(); return; }
+    if (ws.readyState != WebSocket.open) {
+      t.cancel();
+      return;
+    }
     final num = rng.nextInt(9007199254740991);
     ws.add(randomNumberMsg(randomId, num).encode());
     log('ws-client', 'RANDOM_NUMBER id=$randomId number=$num');
@@ -54,6 +58,10 @@ Future<void> _tryConnect(String url) async {
   ws.listen(
     (data) {
       if (data is! List<int>) return;
+      if (data.length > 1024 * 1024) {
+        ws.close(WebSocketStatus.messageTooBig, 'message exceeds 1 MiB');
+        return;
+      }
       final bytes = Uint8List.fromList(data);
       Message msg;
       try {
@@ -75,42 +83,50 @@ Future<void> _tryConnect(String url) async {
           break;
 
         case msgTimeNotification:
-          log('ws-client', 'TIME_NOTIFICATION ts=${msg.timestampMs} iso=${msg.iso8601}');
+          log('ws-client',
+              'TIME_NOTIFICATION ts=${msg.timestampMs} iso=${msg.iso8601}');
           break;
 
         case msgKissRequest:
-          log('ws-client', 'KISS_REQUEST os=${msg.osName} ver=${msg.osVersion} rel=${msg.osRelease} arch=${msg.osArch}');
-          ws.add(kissResponse('en_US', 'UTF-8', DateTime.now().timeZoneName).encode());
+          log('ws-client',
+              'KISS_REQUEST os=${msg.osName} ver=${msg.osVersion} rel=${msg.osRelease} arch=${msg.osArch}');
+          ws.add(kissResponse('en_US', 'UTF-8', DateTime.now().timeZoneName)
+              .encode());
           log('ws-client', 'KISS_RESPONSE sent');
           break;
 
         case msgEchoResponse:
-          log('ws-client', 'ECHO_RESPONSE status=${msg.echoStatus} results=${msg.echoResults!.length}');
+          log('ws-client',
+              'ECHO_RESPONSE status=${msg.echoStatus} results=${msg.echoResults!.length}');
           for (int i = 0; i < msg.echoResults!.length; i++) {
             final r = msg.echoResults![i];
-            log('ws-client', '  Result #${i + 1}: idx=${r.idx} type=${r.type} kv=${r.kv}');
+            log('ws-client',
+                '  Result #${i + 1}: idx=${r.idx} type=${r.type} kv=${r.kv}');
           }
           break;
 
         case msgHashResponse:
-          log('ws-client', 'HASH_RESPONSE id=${msg.randomId} hash=${msg.hashHex}');
+          log('ws-client',
+              'HASH_RESPONSE id=${msg.randomId} hash=${msg.hashHex}');
           break;
 
         case msgError:
-          log('ws-client', 'ERROR code=${msg.errorCode} msg=${msg.errorMessage}');
+          log('ws-client',
+              'ERROR code=${msg.errorCode} msg=${msg.errorMessage}');
           break;
 
         default:
-          log('ws-client', 'Unknown message type: 0x${msg.type.toRadixString(16)}');
+          log('ws-client',
+              'Unknown message type: 0x${msg.type.toRadixString(16)}');
       }
     },
     onDone: () {
       log('ws-client', 'Disconnected');
-      completer.complete();
+      if (!completer.isCompleted) completer.complete();
     },
     onError: (e) {
       log('ws-client', 'Error: $e');
-      completer.complete();
+      if (!completer.isCompleted) completer.complete();
     },
   );
 

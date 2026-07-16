@@ -88,6 +88,7 @@ public static partial class Codec
         private int _pos;
 
         public ByteReader(byte[] data) { _data = data; _pos = 0; }
+        public int Remaining => _data.Length - _pos;
 
         public byte ReadU8()
         {
@@ -123,16 +124,18 @@ public static partial class Codec
 
         public string ReadString()
         {
-            var ln = (int)ReadU32();
-            if (_pos + ln > _data.Length) throw new Exception($"string length {ln} exceeds remaining data");
-            var s = Encoding.UTF8.GetString(_data, _pos, ln);
-            _pos += ln;
+            var ln = ReadU32();
+            if (ln > Remaining) throw new Exception($"string length {ln} exceeds remaining data");
+            var length = (int)ln;
+            var s = Encoding.UTF8.GetString(_data, _pos, length);
+            _pos += length;
             return s;
         }
 
         public Dictionary<string, string> ReadKV()
         {
             var count = ReadU32();
+            if (count > Remaining / 8) throw new Exception($"kv count {count} exceeds remaining payload");
             var m = new Dictionary<string, string>((int)count);
             for (int i = 0; i < count; i++) { m[ReadString()] = ReadString(); }
             return m;
@@ -163,8 +166,8 @@ public static partial class Codec
         if (data[1] != VERSION) throw new Exception($"bad version: 0x{data[1]:x2}");
         var msgType = data[2];
         var payloadLen = BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(4, 4));
-        if (payloadLen > data.Length - HEADER_LEN)
-            throw new Exception($"truncated payload: declared {payloadLen}, available {data.Length - HEADER_LEN}");
+        if (payloadLen != data.Length - HEADER_LEN)
+            throw new Exception($"payload length mismatch: declared {payloadLen}, available {data.Length - HEADER_LEN}");
         var payload = new byte[payloadLen];
         Array.Copy(data, HEADER_LEN, payload, 0, (int)payloadLen);
         return (msgType, payload);
@@ -231,6 +234,7 @@ public static partial class Codec
             case MSG_ECHO_RESPONSE:
                 m.EchoStatus = r.ReadI32();
                 var count = r.ReadU32();
+                if (count > r.Remaining / 13) throw new Exception($"result count {count} exceeds remaining payload");
                 var results = new EchoResult[count];
                 for (int i = 0; i < count; i++) results[i] = new EchoResult(r.ReadI64(), r.ReadU8(), r.ReadKV());
                 m.EchoResults = results;

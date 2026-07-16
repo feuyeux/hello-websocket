@@ -95,7 +95,7 @@ public final class TCPSocket: @unchecked Sendable {
         #else
         addr.sin_family = sa_family_t(AF_INET)
         #endif
-        addr.sin_port = htons(UInt16(port))
+        addr.sin_port = UInt16(port).bigEndian
 
         let rc = withUnsafePointer(to: &addr) { ptr -> Int32 in
             ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { saddr in
@@ -134,7 +134,7 @@ public final class TCPSocket: @unchecked Sendable {
                 #elseif canImport(Glibc)
                 return Glibc.accept(fd, saddr, &addrLen)
                 #else
-                return accept(fd, saddr, &addrLen)
+                return Darwin.accept(fd, saddr, &addrLen)
                 #endif
             }
         }
@@ -163,7 +163,7 @@ public final class TCPSocket: @unchecked Sendable {
         #else
         addr.sin_family = sa_family_t(AF_INET)
         #endif
-        addr.sin_port = htons(UInt16(port))
+        addr.sin_port = UInt16(port).bigEndian
 
         let rc = host.withCString { hostPtr -> Int32 in
             withUnsafeMutablePointer(to: &addr.sin_addr) { ipPtr in
