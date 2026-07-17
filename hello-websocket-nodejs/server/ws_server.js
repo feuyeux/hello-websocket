@@ -32,7 +32,7 @@ function main() {
         }, C.TIME_INTERVAL);
 
         const kissTimer = setInterval(() => {
-            if (ws.readyState === WebSocket.OPEN) ws.send(C.encodeKissRequest(os.type(), os.release(), os.hostname(), os.arch()));
+            if (ws.readyState === WebSocket.OPEN) ws.send(C.encodeKissRequest(os.type(), os.version(), os.release(), os.arch()));
         }, C.KISS_INTERVAL);
 
         const timeoutTimer = setInterval(() => {

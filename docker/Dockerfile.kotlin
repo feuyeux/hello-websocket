@@ -5,11 +5,15 @@ WORKDIR /app/hello-websocket-kotlin
 RUN gradle :server:jar :client:jar --no-daemon
 
 FROM eclipse-temurin:21-jre-alpine AS server
+RUN addgroup -S app && adduser -S -G app app
 WORKDIR /app
-COPY --from=build-base /app/hello-websocket-kotlin/server/build/libs/server.jar /app/hello-ws.jar
+COPY --from=build-base --chown=app:app /app/hello-websocket-kotlin/server/build/libs/server.jar /app/hello-ws.jar
+USER app
 ENTRYPOINT ["java", "-jar", "hello-ws.jar"]
 
 FROM eclipse-temurin:21-jre-alpine AS client
+RUN addgroup -S app && adduser -S -G app app
 WORKDIR /app
-COPY --from=build-base /app/hello-websocket-kotlin/client/build/libs/client.jar /app/hello-ws.jar
+COPY --from=build-base --chown=app:app /app/hello-websocket-kotlin/client/build/libs/client.jar /app/hello-ws.jar
+USER app
 ENTRYPOINT ["java", "-cp", "hello-ws.jar", "org.feuyeux.ws.client.WsClientKt"]

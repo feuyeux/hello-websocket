@@ -3,6 +3,11 @@
 
 import { createHash } from 'crypto';
 
+// Strict UTF-8 decoder: throws on malformed byte sequences instead of
+// silently substituting U+FFFD (the default Buffer#toString('utf-8')
+// behavior), so ReadString enforces PROTOCOL.md §3's "valid UTF-8" rule.
+const UTF8_DECODER = new TextDecoder('utf-8', { fatal: true });
+
 // ─── Constants ───────────────────────────────────────────────────────────
 
 export const PORT = 9898;
@@ -146,7 +151,17 @@ export class ByteReader {
   readString(): string {
     const ln = this.readU32();
     this.ensure(ln, 'string');
-    const s = this.data.toString('utf-8', this.pos, this.pos + ln);
+    const bytes = this.data.subarray(this.pos, this.pos + ln);
+    // PROTOCOL.md §3 requires string payloads to be valid UTF-8 bytes.
+    // Buffer#toString('utf-8') silently replaces invalid sequences with
+    // U+FFFD instead of rejecting them; use a fatal TextDecoder so malformed
+    // input is rejected like the Go/Rust/Python/C++ decoders.
+    let s: string;
+    try {
+      s = UTF8_DECODER.decode(bytes);
+    } catch {
+      throw new Error('string payload is not valid UTF-8');
+    }
     this.pos += ln;
     return s;
   }

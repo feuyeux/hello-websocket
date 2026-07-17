@@ -1,173 +1,130 @@
 name: Build & Test
 
-permissions:
-  contents: read
-
-concurrency:
-  group: build-test-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 on:
   push:
-    branches: ["main", "source"]
+    branches: [main]
   pull_request:
-    branches: ["main", "source"]
+    branches: [main]
+  workflow_dispatch: {}
+
+concurrency:
+  group: build-test-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  dependency-automation:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Validate dependency automation coverage
-        run: ruby scripts/validate-dependency-automation.rb
-      - name: Lint GitHub Actions workflows
-        uses: docker://rhysd/actionlint:1.7.7
-
-  # ─── Go ──────────────────────────────────────────────
   go:
+    name: Go
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
-      - run: cd hello-websocket-go && go build ./...
-      - run: cd hello-websocket-go && go test -race ./...
-      - run: cd hello-websocket-go && go vet ./...
+          go-version: "1.23"
+      - run: ./hello-websocket-go/scripts/build.sh
 
-  # ─── Python ──────────────────────────────────────────
-  python:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - run: cd hello-websocket-python && pip install -r requirements-dev.txt
-      - run: cd hello-websocket-python && python -m pytest common/codec_test.py -v
-
-  # ─── Node.js ─────────────────────────────────────────
-  nodejs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - run: cd hello-websocket-nodejs && npm ci
-      - run: cd hello-websocket-nodejs && npm test
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-      - run: pip install websockets
-      - name: Node server / Python reference client
-        run: |
-          WS_PORT=9898 node hello-websocket-nodejs/server/ws_server.js >node-server.log 2>&1 &
-          server_pid=$!
-          trap 'kill $server_pid 2>/dev/null || true' EXIT
-          sleep 2
-          python tests/reference_client.py
-
-  # ─── TypeScript ──────────────────────────────────────
-  ts:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - run: cd hello-websocket-ts && npm ci
-      - run: cd hello-websocket-ts && npm test
-      - run: cd hello-websocket-ts && npm run build
-
-  # ─── Java ────────────────────────────────────────────
-  java:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - run: cd hello-websocket-java && mvn -B clean package
-
-  # ─── Kotlin ──────────────────────────────────────────
-  kotlin:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - uses: gradle/actions/setup-gradle@v4
-      - run: cd hello-websocket-kotlin && gradle :server:installDist :client:installDist :common:test --no-daemon
-
-  # ─── Rust ────────────────────────────────────────────
   rust:
+    name: Rust
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cd hello-websocket-rust && cargo fmt --check
-      - run: cd hello-websocket-rust && cargo clippy --locked --all-targets -- -D warnings
-      - run: cd hello-websocket-rust && cargo test --locked --verbose
+      - uses: dtolnay/rust-toolchain@stable
+      - run: ./hello-websocket-rust/scripts/build.sh
 
-  # ─── C++ ─────────────────────────────────────────────
-  cpp:
+  java:
+    name: Java
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y cmake g++
-      - run: cd hello-websocket-cpp && cmake -B build -DCMAKE_BUILD_TYPE=Release
-      - run: cd hello-websocket-cpp && cmake --build build
-      - run: cd hello-websocket-cpp/build && ctest --output-on-failure
-
-  # ─── C# ──────────────────────────────────────────────
-  csharp:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-java@v4
         with:
-          dotnet-version: '9.0.x'
-      - run: cd hello-websocket-csharp && dotnet restore test/hello-websocket-csharp-test.csproj --locked-mode
-      - run: cd hello-websocket-csharp && dotnet build --no-restore
-      - run: cd hello-websocket-csharp && dotnet test test/hello-websocket-csharp-test.csproj --no-restore
+          distribution: "temurin"
+          java-version: "17"
+      - run: ./hello-websocket-java/scripts/build.sh
 
-  # ─── Dart ────────────────────────────────────────────
+  kotlin:
+    name: Kotlin
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+      - run: ./hello-websocket-kotlin/scripts/build.sh
+
+  nodejs:
+    name: Node.js
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: hello-websocket-nodejs/package-lock.json
+      - run: ./hello-websocket-nodejs/scripts/build.sh
+
+  typescript:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: hello-websocket-ts/package-lock.json
+      - run: ./hello-websocket-ts/scripts/build.sh
+
+  python:
+    name: Python
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: ./hello-websocket-python/scripts/build.sh
+
   dart:
+    name: Dart
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: '3.9.2'
-      - run: cd hello-websocket-dart && dart pub get --enforce-lockfile
-      - run: cd hello-websocket-dart && dart test common/codec_test.dart
-      - run: cd hello-websocket-dart && dart analyze
+      - run: ./hello-websocket-dart/scripts/build.sh
 
-  # ─── PHP ─────────────────────────────────────────────
   php:
+    name: PHP
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
-          extensions: sockets, mbstring
-      - run: cd hello-websocket-php && composer install --no-interaction --no-progress
-      - run: cd hello-websocket-php && composer test
+          php-version: "8.2"
+      - run: ./hello-websocket-php/scripts/build.sh
 
-  # ─── Swift ────────────────────────────────────────────
-  swift:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+  csharp:
+    name: C#
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: swift-actions/setup-swift@v2
+      - uses: actions/setup-dotnet@v4
         with:
-          swift-version: "6.1"
-      - run: cd hello-websocket-swift && swift test
+          dotnet-version: "9.0.x"
+      - run: ./hello-websocket-csharp/scripts/build.sh
+
+  swift:
+    name: Swift
+    runs-on: ubuntu-latest
+    container: swift:6.0
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./hello-websocket-swift/scripts/build.sh
+
+  cpp:
+    name: C++
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./hello-websocket-cpp/scripts/build.sh

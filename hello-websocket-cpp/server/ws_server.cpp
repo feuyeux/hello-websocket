@@ -51,7 +51,7 @@ void handleClient(socket_t clientSock, const std::string& userId) {
     std::string sessionId = std::to_string(nowMs());
     std::string clientLanguage = "unknown";
 
-    std::atomic_flag sendLock = ATOMIC_FLAG_INIT;
+    std::mutex sendMutex;
     std::atomic<bool> active(true);
     std::atomic<int64_t> lastPongTs(nowMs());
 
@@ -59,10 +59,9 @@ void handleClient(socket_t clientSock, const std::string& userId) {
 
     // Helper to send binary frame (thread-safe)
     auto sendFrame = [&](const std::vector<uint8_t>& data) -> bool {
-        while (sendLock.test_and_set(std::memory_order_acquire)) {}
+        std::lock_guard<std::mutex> lock(sendMutex);
         bool result = false;
         if (active) result = wsSendBinary(clientSock, data);
-        sendLock.clear(std::memory_order_release);
         return result;
     };
 

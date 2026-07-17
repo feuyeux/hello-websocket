@@ -8,17 +8,21 @@ RUN pip install -r requirements.txt
 FROM python:3.14-slim AS server
 ENV PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 ENV PYTHONUNBUFFERED=1
+RUN useradd --system --create-home --shell /usr/sbin/nologin app
 WORKDIR /app
 COPY --from=build-base /app/hello-websocket-python /app
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt && chown -R app:app /app
 ENV PYTHONPATH=/app
+USER app
 ENTRYPOINT ["python", "/app/server/ws_server.py"]
 
 FROM python:3.14-slim AS client
 ENV PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
 ENV PYTHONUNBUFFERED=1
+RUN useradd --system --create-home --shell /usr/sbin/nologin app
 WORKDIR /app
 COPY --from=build-base /app/hello-websocket-python /app
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt && chown -R app:app /app
 ENV PYTHONPATH=/app
+USER app
 ENTRYPOINT ["python", "/app/client/ws_client.py"]

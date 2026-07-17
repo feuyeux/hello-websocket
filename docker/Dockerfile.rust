@@ -8,13 +8,17 @@ WORKDIR /app/hello-websocket-rust
 RUN cargo build --release
 
 FROM debian:bookworm-slim AS server
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home --shell /usr/sbin/nologin app
 WORKDIR /app
-COPY --from=build-base /app/hello-websocket-rust/target/release/ws-server /app/
+COPY --from=build-base --chown=app:app /app/hello-websocket-rust/target/release/ws-server /app/
+USER app
 ENTRYPOINT ["./ws-server"]
 
 FROM debian:bookworm-slim AS client
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home --shell /usr/sbin/nologin app
 WORKDIR /app
-COPY --from=build-base /app/hello-websocket-rust/target/release/ws-client /app/
+COPY --from=build-base --chown=app:app /app/hello-websocket-rust/target/release/ws-client /app/
+USER app
 ENTRYPOINT ["./ws-client"]

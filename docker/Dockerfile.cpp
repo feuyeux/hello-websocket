@@ -9,13 +9,17 @@ WORKDIR /app/hello-websocket-cpp
 RUN cmake -DCMAKE_BUILD_TYPE=Release . && make
 
 FROM debian:bookworm-slim AS server
-RUN apt-get update && apt-get install -y libstdc++6 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libstdc++6 && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home --shell /usr/sbin/nologin app
 WORKDIR /app
-COPY --from=build-base /app/hello-websocket-cpp/ws_server /app/
+COPY --from=build-base --chown=app:app /app/hello-websocket-cpp/ws_server /app/
+USER app
 ENTRYPOINT ["./ws_server"]
 
 FROM debian:bookworm-slim AS client
-RUN apt-get update && apt-get install -y libstdc++6 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y libstdc++6 && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home --shell /usr/sbin/nologin app
 WORKDIR /app
-COPY --from=build-base /app/hello-websocket-cpp/ws_client /app/
+COPY --from=build-base --chown=app:app /app/hello-websocket-cpp/ws_client /app/
+USER app
 ENTRYPOINT ["./ws_client"]

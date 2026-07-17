@@ -27,7 +27,7 @@ async fn main() {
     for attempt in 1..=3 {
         log(
             "ws-client",
-            &format!("Connection attempt {}/3 to {}", url, attempt),
+            &format!("Connection attempt {}/3 to {}", attempt, url),
         );
         match try_connect(&url).await {
             Ok(()) => return,

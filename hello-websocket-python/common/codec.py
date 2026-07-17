@@ -160,19 +160,35 @@ def encode_frame(msg_type: int, payload: bytes) -> bytes:
     return header + payload
 
 
+class CodecError(ValueError):
+    """A decode failure carrying the precise PROTOCOL.md §7 error code.
+
+    Lets callers (e.g. the server's receive loop) classify a decode failure
+    exactly instead of pattern-matching the error message text, which
+    silently breaks if the wording ever changes.
+    """
+
+    def __init__(self, code: int, message: str):
+        super().__init__(message)
+        self.code = code
+
+
 def decode_frame(data: bytes):
     if len(data) < HEADER_LEN:
-        raise ValueError(f"frame too short: {len(data)} bytes")
+        raise CodecError(ERR_TRUNCATED_PAYLOAD, f"frame too short: {len(data)} bytes")
     magic = data[0]
     if magic != MAGIC:
-        raise ValueError(f"bad magic: 0x{magic:02x}")
+        raise CodecError(ERR_BAD_MAGIC, f"bad magic: 0x{magic:02x}")
     version = data[1]
     if version != VERSION:
-        raise ValueError(f"bad version: 0x{version:02x}")
+        raise CodecError(ERR_BAD_VERSION, f"bad version: 0x{version:02x}")
     msg_type = data[2]
     payload_len = struct.unpack(">I", data[4:8])[0]
     if payload_len != len(data) - HEADER_LEN:
-        raise ValueError(f"payload length mismatch: declared {payload_len}, available {len(data) - HEADER_LEN}")
+        raise CodecError(
+            ERR_TRUNCATED_PAYLOAD,
+            f"payload length mismatch: declared {payload_len}, available {len(data) - HEADER_LEN}",
+        )
     return msg_type, data[HEADER_LEN:HEADER_LEN + payload_len]
 
 
@@ -408,7 +424,7 @@ def decode_message(data: bytes) -> Message:
     elif msg_type == MSG_ERROR:
         msg.error = ErrorMsg(code=r.read_i32(), message=r.read_string())
     else:
-        raise ValueError(f"unknown message type: 0x{msg_type:02x}")
+        raise CodecError(ERR_UNKNOWN_MSG_TYPE, f"unknown message type: 0x{msg_type:02x}")
 
     return msg
 

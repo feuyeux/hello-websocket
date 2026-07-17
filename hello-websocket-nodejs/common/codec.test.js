@@ -109,5 +109,53 @@ test('truncatedStringRejected', () => {
     assert.throws(() => C.decodeMessage(malformed));
 });
 
+test('multilingualUtf8RoundTrip', () => {
+    // Multi-byte UTF-8 across several scripts: CJK, Cyrillic, and an emoji
+    // (4-byte sequence), to exercise 2/3/4-byte encodings end to end.
+    for (const text of ['你好世界', 'Привет', '😀🎉', 'こんにちは']) {
+        const msg = C.decodeMessage(C.encodeHello(text));
+        assert.strictEqual(msg.hello.clientLanguage, text);
+    }
+});
+
+test('invalidUtf8StringRejected', () => {
+    // Single-byte string payload containing 0xFF, which is never a valid
+    // UTF-8 lead byte. PROTOCOL.md §3 requires "valid UTF-8 bytes", so the
+    // decoder must reject this rather than silently substituting U+FFFD.
+    const w = new C.ByteWriter();
+    w.writeI64(0n);
+    const badPayload = Buffer.concat([
+        w.data(),
+        Buffer.from([0, 0, 0, 1, 0xFF]), // meta: length=1, byte=0xFF
+        Buffer.from([0, 0, 0, 0]),       // data: empty string
+    ]);
+    const frame = C.encodeFrame(C.MSG_ECHO_REQUEST, badPayload);
+    assert.throws(() => C.decodeMessage(frame), /not valid UTF-8/);
+});
+
+test('protocolVectors', () => {
+    const vectors = JSON.parse(
+        require('fs').readFileSync(
+            require('path').join(__dirname, '..', '..', 'tests', 'protocol-vectors.json'),
+            'utf-8'
+        )
+    );
+
+    const helloGo = Buffer.from(vectors.hello_go, 'hex');
+    const msgGo = C.decodeMessage(helloGo);
+    assert.strictEqual(msgGo.hello.clientLanguage, 'Go');
+
+    const helloChinese = Buffer.from(vectors.hello_chinese, 'hex');
+    const msgChinese = C.decodeMessage(helloChinese);
+    assert.strictEqual(msgChinese.hello.clientLanguage, '你好');
+
+    const randomNegOne = Buffer.from(vectors.random_negative_one, 'hex');
+    const msgRandom = C.decodeMessage(randomNegOne);
+    assert.strictEqual(msgRandom.random.number, -1n);
+
+    const truncated = Buffer.from(vectors.invalid_truncated_string, 'hex');
+    assert.throws(() => C.decodeMessage(truncated));
+});
+
 console.log(`\n${passed} passed, ${failed} failed, ${passed + failed} total`);
 process.exit(failed === 0 ? 0 : 1);

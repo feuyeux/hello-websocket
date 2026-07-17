@@ -7,6 +7,7 @@ import (
 	"math"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // ─── Constants ───────────────────────────────────────────────────────────
@@ -165,7 +166,15 @@ func (r *Reader) ReadString() (string, error) {
 	if r.pos+int(ln) > len(r.data) {
 		return "", fmt.Errorf("string length %d exceeds remaining data", ln)
 	}
-	s := string(r.data[r.pos : r.pos+int(ln)])
+	b := r.data[r.pos : r.pos+int(ln)]
+	// PROTOCOL.md §3 requires string payloads to be valid UTF-8 bytes.
+	// Reject invalid sequences instead of silently accepting them, matching
+	// the Rust/Python decoders (previously this used a raw string()
+	// conversion, which never validates well-formedness).
+	if !utf8.Valid(b) {
+		return "", fmt.Errorf("string payload is not valid UTF-8")
+	}
+	s := string(b)
 	r.pos += int(ln)
 	return s, nil
 }
@@ -195,6 +204,21 @@ func (r *Reader) ReadKV() (map[string]string, error) {
 
 // ─── Frame Codec ─────────────────────────────────────────────────────────
 
+// CodecError carries the precise PROTOCOL.md §7 error code alongside the
+// human-readable message, so callers (e.g. the server's receive loop) can
+// classify a decode failure exactly instead of pattern-matching on the
+// error text — which silently breaks if the message wording ever changes.
+type CodecError struct {
+	Code    int32
+	Message string
+}
+
+func (e *CodecError) Error() string { return e.Message }
+
+func newCodecError(code int32, format string, args ...interface{}) *CodecError {
+	return &CodecError{Code: code, Message: fmt.Sprintf(format, args...)}
+}
+
 func EncodeFrame(msgType byte, payload []byte) []byte {
 	buf := make([]byte, HeaderLen+len(payload))
 	buf[0] = Magic
@@ -208,18 +232,19 @@ func EncodeFrame(msgType byte, payload []byte) []byte {
 
 func DecodeFrame(data []byte) (msgType byte, payload []byte, err error) {
 	if len(data) < HeaderLen {
-		return 0, nil, fmt.Errorf("frame too short: %d bytes", len(data))
+		return 0, nil, newCodecError(ErrTruncatedPayload, "frame too short: %d bytes", len(data))
 	}
 	if data[0] != Magic {
-		return 0, nil, fmt.Errorf("bad magic: 0x%02x", data[0])
+		return 0, nil, newCodecError(ErrBadMagic, "bad magic: 0x%02x", data[0])
 	}
 	if data[1] != Version {
-		return 0, nil, fmt.Errorf("bad version: 0x%02x", data[1])
+		return 0, nil, newCodecError(ErrBadVersion, "bad version: 0x%02x", data[1])
 	}
 	msgType = data[2]
 	payloadLen := binary.BigEndian.Uint32(data[4:])
 	if int(payloadLen) != len(data)-HeaderLen {
-		return 0, nil, fmt.Errorf("payload length mismatch: declared %d, available %d", payloadLen, len(data)-HeaderLen)
+		return 0, nil, newCodecError(ErrTruncatedPayload,
+			"payload length mismatch: declared %d, available %d", payloadLen, len(data)-HeaderLen)
 	}
 	payload = data[HeaderLen : HeaderLen+int(payloadLen)]
 	return msgType, payload, nil
@@ -617,7 +642,7 @@ func DecodeMessage(data []byte) (*Message, error) {
 	case MsgError:
 		msg.Error, err = DecodeErrorMsg(r)
 	default:
-		return nil, fmt.Errorf("unknown message type: 0x%02x", msgType)
+		return nil, newCodecError(ErrUnknownMsgType, "unknown message type: 0x%02x", msgType)
 	}
 	if err != nil {
 		return nil, err

@@ -1,223 +1,209 @@
 version: 2
-
 updates:
-  - package-ecosystem: maven
-    directory: /hello-websocket-java
-    target-branch: main
+  # Java
+  - package-ecosystem: "maven"
+    directory: "/hello-websocket-java"
     schedule:
-      interval: weekly
-      day: monday
+      interval: "weekly"
+      day: "monday"
+      time: "03:00"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Kotlin
+  - package-ecosystem: "gradle"
+    directory: "/hello-websocket-kotlin"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:10"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Go
+  - package-ecosystem: "gomod"
+    directory: "/hello-websocket-go"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:20"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Rust
+  - package-ecosystem: "cargo"
+    directory: "/hello-websocket-rust"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:30"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Node.js
+  - package-ecosystem: "npm"
+    directory: "/hello-websocket-nodejs"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:40"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # TypeScript
+  - package-ecosystem: "npm"
+    directory: "/hello-websocket-ts"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:50"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Dart
+  - package-ecosystem: "pub"
+    directory: "/hello-websocket-dart"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:00"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # PHP
+  - package-ecosystem: "composer"
+    directory: "/hello-websocket-php"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:10"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Python
+  - package-ecosystem: "pip"
+    directory: "/hello-websocket-python"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:20"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # C#
+  - package-ecosystem: "nuget"
+    directory: "/hello-websocket-csharp/test"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:30"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Swift
+  - package-ecosystem: "swift"
+    directory: "/hello-websocket-swift"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:40"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # Docker base images (all 12 language Dockerfiles)
+  - package-ecosystem: "docker"
+    directory: "/docker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "04:50"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # GitHub Actions workflows
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
       time: "05:00"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(java)"
+      timezone: "Asia/Shanghai"
+    target-branch: "main"
+    rebase-strategy: "auto"
+    open-pull-requests-limit: 5
     groups:
-      java-non-major:
+      minor-and-patch:
         patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: gradle
-    directory: /hello-websocket-kotlin
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "05:10"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(kotlin)"
-    groups:
-      kotlin-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: gomod
-    directory: /hello-websocket-go
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "05:20"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(go)"
-    groups:
-      go-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: cargo
-    directory: /hello-websocket-rust
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "05:30"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(rust)"
-    groups:
-      rust-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: npm
-    directory: /hello-websocket-nodejs
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "05:40"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(nodejs)"
-    groups:
-      nodejs-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: npm
-    directory: /hello-websocket-ts
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "05:50"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(ts)"
-    groups:
-      typescript-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: pub
-    directory: /hello-websocket-dart
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "06:00"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(dart)"
-    groups:
-      dart-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: composer
-    directory: /hello-websocket-php
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "06:10"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(php)"
-    groups:
-      php-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: pip
-    directory: /hello-websocket-python
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "06:20"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(python)"
-    groups:
-      python-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: nuget
-    directory: /hello-websocket-csharp/test
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "06:30"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(csharp)"
-    groups:
-      csharp-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: swift
-    directory: /hello-websocket-swift
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "06:40"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(swift)"
-    groups:
-      swift-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: docker
-    directory: /docker
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "06:50"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 12
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(docker)"
-    groups:
-      docker-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
-
-  - package-ecosystem: github-actions
-    directory: /
-    target-branch: main
-    schedule:
-      interval: weekly
-      day: monday
-      time: "07:00"
-      timezone: Asia/Shanghai
-    open-pull-requests-limit: 10
-    rebase-strategy: auto
-    commit-message:
-      prefix: "deps(actions)"
-    groups:
-      actions-non-major:
-        patterns: ["*"]
-        update-types: [minor, patch]
+        update-types: ["minor", "patch"]

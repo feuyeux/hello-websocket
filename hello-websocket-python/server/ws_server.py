@@ -15,7 +15,14 @@ from common.codec import *
 
 
 async def handle_client(websocket):
-    user_id = websocket.request_headers.get("userId", str(uuid.uuid4())) if hasattr(websocket, "request_headers") else str(uuid.uuid4())
+    # websockets 14+ removed the legacy `request_headers` attribute; the
+    # current API exposes the opening handshake request (with its headers)
+    # via `websocket.request`, which is set once the handshake completes.
+    user_id = str(uuid.uuid4())
+    if websocket.request is not None:
+        header_user_id = websocket.request.headers.get("userId")
+        if header_user_id:
+            user_id = header_user_id
     session_id = str(uuid.uuid4())
     connected_at = now_ms()
     last_pong_ts = connected_at
@@ -71,8 +78,12 @@ async def handle_client(websocket):
                 msg = decode_message(raw)
             except Exception as e:
                 log("ws-server", f"Decode error: {e}")
-                unknown = str(e).startswith("unknown message type")
-                err = ErrorMsg(code=ERR_UNKNOWN_MSG_TYPE if unknown else ERR_DECODE, message=str(e))
+                # Classify by the codec's own typed error code (CodecError)
+                # instead of pattern-matching the message text, which
+                # silently breaks if the wording ever changes.
+                code = getattr(e, "code", ERR_DECODE)
+                unknown = code == ERR_UNKNOWN_MSG_TYPE
+                err = ErrorMsg(code=code, message=str(e))
                 await send_msg(err.encode())
                 if not unknown:
                     await websocket.close(code=1002, reason="invalid protocol frame")

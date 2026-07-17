@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -141,14 +142,24 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		msg, err := common.DecodeMessage(data)
 		if err != nil {
 			common.Log("ws-server", fmt.Sprintf("Decode error: %v", err))
-			unknown := strings.HasPrefix(err.Error(), "unknown message type")
+			// Classify by the codec's own typed error code instead of
+			// pattern-matching the error text, which silently breaks if the
+			// message wording ever changes (see CodecError in codec.go).
 			code := int32(common.ErrDecode)
-			if unknown {
-				code = common.ErrUnknownMsgType
+			var codecErr *common.CodecError
+			if errors.As(err, &codecErr) {
+				code = codecErr.Code
 			}
+			unknown := code == common.ErrUnknownMsgType
 			errMsg := &common.ErrorMsg{Code: code, Message: err.Error()}
 			session.Send(errMsg.Encode())
 			if !unknown {
+				// Unrecoverable protocol error (bad magic/version/truncated
+				// payload): close with WS status 1002 ("protocol error") per
+				// PROTOCOL.md §7, matching the Python server's behavior
+				// instead of relying on the deferred close to omit a code.
+				closeMsg := websocket.FormatCloseMessage(websocket.CloseProtocolError, "invalid protocol frame")
+				_ = conn.WriteControl(websocket.CloseMessage, closeMsg, time.Now().Add(time.Second))
 				break
 			}
 			continue

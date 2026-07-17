@@ -50,15 +50,14 @@ bool tryConnect(const std::string& host, uint16_t port) {
 
     log("ws-client", "Connected");
 
-    std::atomic_flag sendLock = ATOMIC_FLAG_INIT;
+    std::mutex sendMutex;
     std::atomic<bool> active(true);
 
     // Helper: send masked binary frame (client-to-server must be masked)
     auto sendFrame = [&](const std::vector<uint8_t>& data) -> bool {
-        while (sendLock.test_and_set(std::memory_order_acquire)) {}
+        std::lock_guard<std::mutex> lock(sendMutex);
         bool result = false;
         if (active) result = wsSendBinaryMasked(ws.sock, data);
-        sendLock.clear(std::memory_order_release);
         return result;
     };
 
