@@ -1,4 +1,4 @@
-FROM gradle:8.14-jdk21 AS build-base
+FROM gradle:9.6-jdk21 AS build-base
 COPY docker/gradle-init.d/aliyun.gradle /root/.gradle/init.d/aliyun.gradle
 COPY hello-websocket-kotlin /app/hello-websocket-kotlin
 WORKDIR /app/hello-websocket-kotlin
