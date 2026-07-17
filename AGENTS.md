@@ -56,3 +56,19 @@ When a protocol change is necessary, update `PROTOCOL.md` first, then change eve
 ## Security Note
 
 These examples use plain `ws://` and treat handshake `userId` metadata as untrusted. Do not present them as production authentication or TLS implementations. Production deployments need TLS termination, upgrade authentication, origin controls, and rate limiting outside this teaching project.
+
+## JDK Conventions
+
+The two JVM languages in this repo do NOT share a single JDK version. The pinned versions are intentional and authoritative:
+
+| Language | Build base image | Runtime image | Bytecode target |
+|:---------|:-----------------|:--------------|:----------------|
+| Java (`hello-websocket-java/`) | `maven:3-eclipse-temurin-25` | `eclipse-temurin:25-jre-alpine` | `maven.compiler.source/target = 17` (per `pom.xml`) |
+| Kotlin (`hello-websocket-kotlin/`) | `gradle:8.14-jdk21` | `eclipse-temurin:21-jre-alpine` | `sourceCompatibility = "21"`, `jvmTarget = JVM_21` (per `build.gradle.kts`) |
+
+Rules:
+
+- Do **not** "unify" the two JDK pins. Java ships on JDK 25 and Kotlin on JDK 21 because each implementation is independently pinned to the version it was developed and tested against.
+- When changing a Docker base image, update both `docker/Dockerfile.<lang>` and the matching row in `PLAN.md` so the spec and the implementation stay aligned.
+- The bytecode target columns (`17` for Java, `21` for Kotlin) are the language level the source compiles TO — separate from the JDK used to build and run it. Bumping the JDK does not require bumping the bytecode target.
+- Before editing any of these values, load `PLAN.md` to confirm the current spec; the spec wins, and the Dockerfiles + AGENTS.md must follow it.
