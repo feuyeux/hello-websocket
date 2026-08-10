@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # Shared OCI runtime selection for the Dockerfile-based workflows.
-# Set WS_CONTAINER_RUNTIME to docker or container to override auto detection.
+# Set CONTAINER_RUNTIME to docker or container to override auto detection.
 
 ws_container_runtime_init() {
-    local requested="${WS_CONTAINER_RUNTIME:-auto}"
+    local requested="${CONTAINER_RUNTIME:-auto}"
     local host_os host_arch
     host_os="$(uname -s)"
     host_arch="$(uname -m)"
@@ -12,24 +12,24 @@ ws_container_runtime_init() {
     case "$requested" in
     auto)
         if [[ "$host_os" == "Darwin" && "$host_arch" == "arm64" ]] && command -v container >/dev/null 2>&1; then
-            WS_CONTAINER_RUNTIME="container"
+            CONTAINER_RUNTIME="container"
         elif command -v docker >/dev/null 2>&1; then
-            WS_CONTAINER_RUNTIME="docker"
+            CONTAINER_RUNTIME="docker"
         else
             echo "Error: neither Docker nor Apple container is available." >&2
             return 1
         fi
         ;;
     docker|container)
-        WS_CONTAINER_RUNTIME="$requested"
+        CONTAINER_RUNTIME="$requested"
         ;;
     *)
-        echo "Error: WS_CONTAINER_RUNTIME must be auto, docker, or container." >&2
+        echo "Error: CONTAINER_RUNTIME must be auto, docker, or container." >&2
         return 1
         ;;
     esac
 
-    if [[ "$WS_CONTAINER_RUNTIME" == "container" ]]; then
+    if [[ "$CONTAINER_RUNTIME" == "container" ]]; then
         if [[ "$host_os" != "Darwin" || "$host_arch" != "arm64" ]]; then
             echo "Error: Apple container requires an Apple-silicon Mac." >&2
             return 1
@@ -53,17 +53,17 @@ ws_container_runtime_init() {
         fi
     fi
 
-    export WS_CONTAINER_RUNTIME
-    echo "Using container runtime: $WS_CONTAINER_RUNTIME"
+    export CONTAINER_RUNTIME
+    echo "Using container runtime: $CONTAINER_RUNTIME"
 }
 
 ws_container_build() {
     ws_container_builder_init
-    "$WS_CONTAINER_RUNTIME" build "$@"
+    "$CONTAINER_RUNTIME" build "$@"
 }
 
 ws_container_builder_init() {
-    [[ "$WS_CONTAINER_RUNTIME" == "container" ]] || return 0
+    [[ "$CONTAINER_RUNTIME" == "container" ]] || return 0
 
     if ! container builder status >/dev/null 2>&1; then
         echo "Starting Apple container builder..."
@@ -72,15 +72,15 @@ ws_container_builder_init() {
 }
 
 ws_container_run() {
-    "$WS_CONTAINER_RUNTIME" run "$@"
+    "$CONTAINER_RUNTIME" run "$@"
 }
 
 ws_container_logs() {
-    "$WS_CONTAINER_RUNTIME" logs "$@"
+    "$CONTAINER_RUNTIME" logs "$@"
 }
 
 ws_container_remove() {
-    if [[ "$WS_CONTAINER_RUNTIME" == "container" ]]; then
+    if [[ "$CONTAINER_RUNTIME" == "container" ]]; then
         container delete --force "$@"
     else
         docker rm -f "$@"
@@ -88,7 +88,7 @@ ws_container_remove() {
 }
 
 ws_container_push() {
-    if [[ "$WS_CONTAINER_RUNTIME" == "container" ]]; then
+    if [[ "$CONTAINER_RUNTIME" == "container" ]]; then
         container image push "$@"
     else
         docker push "$@"
@@ -98,7 +98,7 @@ ws_container_push() {
 ws_container_require_host_domain() {
     local domain="host.container.internal"
 
-    [[ "$WS_CONTAINER_RUNTIME" == "container" ]] || return 0
+    [[ "$CONTAINER_RUNTIME" == "container" ]] || return 0
 
     if ! container system dns list --quiet 2>/dev/null | grep -Fxq "$domain"; then
         cat >&2 <<EOF

@@ -118,7 +118,7 @@ IMG=$(get_image_name "$LANGUAGE" "$COMPONENT")
 ws_container_remove "$NAME" >/dev/null 2>&1 || true
 
 SERVER_HOST="host.docker.internal"
-if [[ "$COMPONENT" == "client" && "$WS_CONTAINER_RUNTIME" == "container" ]]; then
+if [[ "$COMPONENT" == "client" && "$CONTAINER_RUNTIME" == "container" ]]; then
     ws_container_require_host_domain
     SERVER_HOST="host.container.internal"
 fi
@@ -127,8 +127,8 @@ if [[ "$COMPONENT" == "server" ]]; then
     echo "Running $LANGUAGE server..."
     echo "Container: $NAME, Image: $IMG"
     ws_container_run -d --name "$NAME" -p 9898:9898 "$IMG"
-    echo "Server started. View logs: ${WS_CONTAINER_RUNTIME} logs $NAME"
-    echo "Stop server: ${WS_CONTAINER_RUNTIME} stop $NAME"
+    echo "Server started. View logs: ${CONTAINER_RUNTIME} logs $NAME"
+    echo "Stop server: ${CONTAINER_RUNTIME} stop $NAME"
 elif [[ "$COMPONENT" == "client" ]]; then
     echo "Running $LANGUAGE client..."
     echo "Container: $NAME, Image: $IMG"
