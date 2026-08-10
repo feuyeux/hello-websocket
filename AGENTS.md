@@ -46,42 +46,6 @@ When a protocol change is necessary, update `PROTOCOL.md` first, then change eve
 
 5. Run only the formatter and tests for the language you changed. `scripts/format.sh` can modify multiple implementations, so do not use it for a focused change unless broad formatting is intentional.
 
-### Container Runtime on macOS
-
-On Apple-silicon macOS, Apple's `container` CLI can replace Docker for this repository's container workflows. The scripts `docker/build_image.sh`, `docker/run_container.sh`, `docker/push_image.sh`, and `docker/smoke_test_all.sh` use `docker/container_runtime.sh` to select the runtime automatically.
-
-- On arm64 macOS with Apple `container` installed, runtime auto-detection selects `container`.
-- On other supported hosts, runtime auto-detection selects Docker.
-- Override selection with `CONTAINER_RUNTIME=docker` or `CONTAINER_RUNTIME=container`.
-- Apple `container` is not Docker Compose-compatible; `docker/docker-compose*.yml` remains Docker-only.
-
-Initialize Apple Container when needed:
-
-```sh
-container --version
-container system start
-container system status
-container builder start
-container builder status
-```
-
-The build script also starts the Apple Container system service and builder when they are not running. To build all 12 language implementations' server and client images with bounded concurrency:
-
-```sh
-CONTAINER_RUNTIME=container ./docker/build_image.sh \\
-  --all --component both --batch-size 6 --continue
-```
-
-Use `--batch-size 1` for a fully serial build on a resource-constrained Mac. Avoid `--batch-size 0` unless the machine has sufficient memory.
-
-For Apple Container clients to reach a server port published on the Mac, configure this one-time host DNS mapping:
-
-```sh
-sudo container system dns create host.container.internal --localhost 203.0.113.113
-```
-
-The run and smoke-test scripts use `host.container.internal` with Apple Container and `host.docker.internal` with Docker.
-
 ## Code and Test Expectations
 
 - Follow the idioms, formatter, dependency manifest, and lockfile already used by the selected language directory.

@@ -2,6 +2,8 @@ package io.github.hellowebsocket;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -153,7 +155,21 @@ public final class Codec {
         public String readString() throws DecodeException {
             long ln = readU32();
             if (pos + ln > data.length) throw new DecodeException("string length " + ln + " exceeds remaining data");
-            String s = new String(data, pos, (int) ln, StandardCharsets.UTF_8);
+            // PROTOCOL.md §3 requires string payloads to be "valid UTF-8 bytes".
+            // new String(bytes, UTF_8) silently substitutes U+FFFD for malformed
+            // input, which would accept frames that the Go, C++, Node.js,
+            // TypeScript, Python, Rust and Dart decoders all reject. Decode
+            // strictly so every implementation agrees on what is a valid frame.
+            String s;
+            try {
+                s = StandardCharsets.UTF_8.newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(CodingErrorAction.REPORT)
+                        .decode(ByteBuffer.wrap(data, pos, (int) ln))
+                        .toString();
+            } catch (CharacterCodingException e) {
+                throw new DecodeException("string payload is not valid UTF-8");
+            }
             pos += ln;
             return s;
         }

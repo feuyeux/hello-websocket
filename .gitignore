@@ -21,6 +21,10 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+# pytest/type-checker caches produced by hello-websocket-python/scripts/build.sh
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Node.js / TypeScript
 node_modules/

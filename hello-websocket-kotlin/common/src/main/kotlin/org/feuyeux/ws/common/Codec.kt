@@ -3,6 +3,8 @@
 package org.feuyeux.ws.common
 
 import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.ZoneOffset
@@ -110,7 +112,19 @@ class ByteReader(private val data: ByteArray) {
     fun readString(): String {
         val len = readU32()
         if (len < 0 || len > remaining()) throw IllegalStateException("string length $len exceeds remaining data")
-        val s = String(data, pos, len, Charsets.UTF_8)
+        // PROTOCOL.md §3 requires string payloads to be "valid UTF-8 bytes".
+        // String(data, pos, len, Charsets.UTF_8) substitutes U+FFFD for malformed
+        // input, so decode strictly to reject the frames that the Go, C++,
+        // Node.js, TypeScript, Python, Rust and Dart decoders reject.
+        val s = try {
+            Charsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(data, pos, len))
+                .toString()
+        } catch (e: CharacterCodingException) {
+            throw IllegalStateException("string payload is not valid UTF-8")
+        }
         pos += len
         return s
     }

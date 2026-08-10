@@ -84,6 +84,15 @@ class CodecTest {
         assertFailsWith<Exception> { decodeMessage(truncated) }
     }
 
+    @Test fun test_invalid_utf8_string_rejected() {
+        // HELLO payload declaring a 1-byte string whose only byte is 0xFF, which
+        // is never a valid UTF-8 lead byte. PROTOCOL.md §3 requires "valid UTF-8
+        // bytes", so the decoder must reject it instead of substituting U+FFFD.
+        val payload = byteArrayOf(0x00, 0x00, 0x00, 0x01, 0xFF.toByte())
+        val frame = encodeFrame(MSG_HELLO, payload)
+        assertFailsWith<Exception> { decodeMessage(frame) }
+    }
+
     @Test fun test_hash_number_10_chars() {
         val hash = hashNumber(42L)
         assertEquals(10, hash.length, "hash should be 10 hex chars")

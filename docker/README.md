@@ -6,28 +6,13 @@ Multi-stage Dockerfiles for all 12 language implementations, plus build/run/push
 
 `build_image.sh`, `run_container.sh`, `push_image.sh`, and `smoke_test_all.sh` automatically select a runtime:
 
-| Docker | Docker CLI |
-| Apple Container | `container` CLI |
+| Host | Runtime |
+|---|---|
+| Apple-silicon macOS with Apple `container` installed | Apple `container` |
+| Other supported hosts | Docker |
 
-On Apple-silicon macOS, Apple's `container` CLI can replace Docker for the build, run, push, and smoke-test scripts. The runtime adapter is `docker/container_runtime.sh`; it auto-selects `container` when appropriate. Set `CONTAINER_RUNTIME=docker` or `CONTAINER_RUNTIME=container` to override selection. The `container` runtime is valid only on Apple-silicon macOS.
-
-Initialize and verify Apple Container with:
-
-```bash
-container --version
-container system start
-container system status
-container builder start
-container builder status
-```
-
-The build script starts the Apple `container` system service and builder when needed. Build the complete server/client matrix with bounded concurrency:
-
-```bash
-CONTAINER_RUNTIME=container ./build_image.sh --all --component both --batch-size 6 --continue
-```
-
-For a fully serial build on a resource-constrained Mac, use `--batch-size 1`. Avoid `--batch-size 0` unless sufficient memory is available.
+Set `WS_CONTAINER_RUNTIME=docker` or `WS_CONTAINER_RUNTIME=container` to override selection. The `container` runtime is valid only on Apple-silicon macOS. Its system service is started automatically when needed.
+The build script also starts Apple `container builder` when it is not already running.
 
 Before an Apple `container` client can reach a server port published on the Mac, configure this one-time host DNS mapping:
 
@@ -78,7 +63,7 @@ Build Docker images for one or all languages.
 ./build_image.sh --all --batch-size 1           # Build all languages fully serially
 ./build_image.sh --all --batch-size 0           # Build all languages in one fully-parallel group
 ./build_image.sh --all --continue               # Build all, skip past failures, report which failed at the end
-CONTAINER_RUNTIME=container ./build_image.sh --language java --component server
+WS_CONTAINER_RUNTIME=container ./build_image.sh --language java --component server
 ```
 
 Options:
@@ -101,7 +86,7 @@ Run a server or client container.
 ```bash
 ./run_container.sh --language java --component server
 ./run_container.sh --language go --component client
-CONTAINER_RUNTIME=docker ./run_container.sh --language java --component server
+WS_CONTAINER_RUNTIME=docker ./run_container.sh --language java --component server
 ```
 
 ### push_image.sh

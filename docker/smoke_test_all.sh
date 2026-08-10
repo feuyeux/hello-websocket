@@ -88,7 +88,7 @@ trap cleanup EXIT
 
 ws_container_runtime_init
 SERVER_HOST="host.docker.internal"
-if [[ "$CONTAINER_RUNTIME" == "container" ]]; then
+if [[ "$WS_CONTAINER_RUNTIME" == "container" ]]; then
     ws_container_require_host_domain
     SERVER_HOST="host.container.internal"
 fi
@@ -119,7 +119,7 @@ for lang in "${CLIENT_LANGS[@]}"; do
 
     server_log_lines=$(ws_container_logs "$SERVER_NAME" 2>&1 | wc -l | tr -d ' ')
     set +e
-    run_with_timeout "$TIMEOUT" "$CONTAINER_RUNTIME" run --rm --name "$CLIENT_NAME" \
+    run_with_timeout "$TIMEOUT" "$WS_CONTAINER_RUNTIME" run --rm --name "$CLIENT_NAME" \
         -e WS_SERVER="$SERVER_HOST" -e WS_PORT=9898 \
         "$CLIENT_IMG" 2>&1 | tee "$LOG_DIR/${lang}.log"
     client_status=${PIPESTATUS[0]}

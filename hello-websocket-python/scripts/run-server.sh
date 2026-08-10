@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-exec python server/ws_server.py
+# shellcheck source=scripts/python-env.sh
+source scripts/python-env.sh
+exec "${PYTHON}" server/ws_server.py

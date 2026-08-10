@@ -120,6 +120,15 @@ import Testing
         #expect(throws: CodecError.self) { _ = try decodeFrame(data) }
     }
 
+    @Test func invalidUtf8StringRejected() {
+        // HELLO payload declaring a 1-byte string whose only byte is 0xFF, which
+        // is never a valid UTF-8 lead byte. PROTOCOL.md §3 requires "valid UTF-8
+        // bytes", so the decoder must reject it instead of repairing it to U+FFFD.
+        let payload: [UInt8] = [0x00, 0x00, 0x00, 0x01, 0xFF]
+        let frame = HelloWebSocket.encodeFrame(.hello, payload: payload)
+        #expect(throws: CodecError.self) { _ = try decodeMessage(frame) }
+    }
+
     // MARK: - Message Tests
 
     @Test func helloEncodeDecode() throws {

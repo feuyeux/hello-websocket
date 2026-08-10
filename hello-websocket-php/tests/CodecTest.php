@@ -137,6 +137,16 @@ class CodecTest extends TestCase
         decode_frame($bad);
     }
 
+    public function testInvalidUtf8StringRejected(): void
+    {
+        // HELLO payload declaring a 1-byte string whose only byte is 0xFF, which
+        // is never a valid UTF-8 lead byte. PROTOCOL.md §3 requires "valid UTF-8
+        // bytes", so the decoder must reject it rather than returning raw bytes.
+        $this->expectException(\InvalidArgumentException::class);
+        $payload = "\x00\x00\x00\x01\xFF";
+        decode_message(encode_frame(MSG_HELLO, $payload));
+    }
+
     // ─── Message Codec Tests ──────────────────────────────
 
     public function testHelloEncodeDecode(): void

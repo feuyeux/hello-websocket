@@ -186,6 +186,14 @@ class ByteReader
         $ln = $this->readU32();
         $this->requireBytes($ln, 'string');
         $s = substr($this->data, $this->pos, $ln);
+        // PROTOCOL.md §3 requires string payloads to be "valid UTF-8 bytes".
+        // PHP strings are byte arrays, so substr() happily returns malformed
+        // input that the Go, C++, Node.js, TypeScript, Python, Rust and Dart
+        // decoders reject. The //u modifier makes PCRE validate the subject as
+        // UTF-8, which avoids depending on the optional mbstring extension.
+        if ($ln > 0 && preg_match('//u', $s) !== 1) {
+            throw new \InvalidArgumentException('string payload is not valid UTF-8');
+        }
         $this->pos += $ln;
         return $s;
     }

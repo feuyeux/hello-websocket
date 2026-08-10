@@ -202,7 +202,13 @@ public final class ByteReader {
     public func readString() throws -> String {
         let ln = Int(try readU32())
         guard pos + ln <= data.count else { throw CodecError.eof("string at \(pos), len=\(ln)") }
-        let s = String(decoding: data[pos..<pos+ln], as: UTF8.self)
+        // PROTOCOL.md §3 requires string payloads to be "valid UTF-8 bytes".
+        // String(decoding:as:UTF8.self) repairs malformed sequences into U+FFFD,
+        // which would accept frames that the Go, C++, Node.js, TypeScript,
+        // Python, Rust and Dart decoders reject, so validate instead.
+        guard let s = String(bytes: data[pos..<pos+ln], encoding: .utf8) else {
+            throw CodecError.invalidUtf8(pos)
+        }
         pos += ln; return s
     }
     public func readKv() throws -> [(String, String)] {
@@ -227,6 +233,7 @@ public enum CodecError: Error, CustomStringConvertible {
     case badVersion(UInt8)
     case truncatedPayload(declared: Int, available: Int)
     case unknownMsgType(UInt8)
+    case invalidUtf8(Int)
 
     public var description: String {
         switch self {
@@ -236,6 +243,7 @@ public enum CodecError: Error, CustomStringConvertible {
         case .badVersion(let v): return String(format: "bad version: 0x%02x", v)
         case .truncatedPayload(let d, let a): return "truncated payload: declared \(d), available \(a)"
         case .unknownMsgType(let v): return String(format: "unknown message type: 0x%02x", v)
+        case .invalidUtf8(let p): return "string payload is not valid UTF-8 at \(p)"
         }
     }
 }

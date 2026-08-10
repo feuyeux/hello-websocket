@@ -84,6 +84,11 @@ public static partial class Codec
 {
     public class ByteReader
     {
+        // PROTOCOL.md §3 requires strings to be valid UTF-8. The shared
+        // Encoding.UTF8 instance silently replaces malformed bytes with U+FFFD,
+        // so use an encoder that throws on invalid input instead.
+        private static readonly UTF8Encoding StrictUtf8 = new UTF8Encoding(false, true);
+
         private readonly byte[] _data;
         private int _pos;
 
@@ -127,7 +132,19 @@ public static partial class Codec
             var ln = ReadU32();
             if (ln > Remaining) throw new Exception($"string length {ln} exceeds remaining data");
             var length = (int)ln;
-            var s = Encoding.UTF8.GetString(_data, _pos, length);
+            // PROTOCOL.md §3 requires string payloads to be "valid UTF-8 bytes".
+            // Encoding.UTF8 substitutes U+FFFD for malformed input, which would
+            // accept frames that the Go, C++, Node.js, TypeScript, Python, Rust
+            // and Dart decoders reject, so decode with a throwing encoder.
+            string s;
+            try
+            {
+                s = StrictUtf8.GetString(_data, _pos, length);
+            }
+            catch (DecoderFallbackException)
+            {
+                throw new Exception("string payload is not valid UTF-8");
+            }
             _pos += length;
             return s;
         }
