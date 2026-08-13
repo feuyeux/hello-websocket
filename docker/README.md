@@ -124,7 +124,6 @@ Starts one server + one client for a single language. Available for all 12 langu
 
 | Variable | Default | Description |
 |---|---|---|
+| `WS_SERVER` | `host.docker.internal` | Server host (client containers) |
 | `WS_PORT` | `9898` | Server and client port |
 | `WS_PATH` | `/ws` | WebSocket endpoint path |
-| `WS_SERVER` | `host.docker.internal` | Server host (client containers) |
-| `WS_PORT` | `9898` | Server port (client containers) |

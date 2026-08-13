@@ -1,5 +1,7 @@
 # Hello Websocket - Complete Implementation Plan
 
+> **Status: complete.** All acceptance criteria in section 8 are implemented and verified in CI. See `docs/PARITY_MATRIX.md` for the audited per-language matrix.
+
 Benchmark: `/d/coding/hello-grpc/` (12-language gRPC reference project)
 Target: `/d/coding/hello-websocket/` - 12 programming languages, server AND client, complete WebSocket functionality, fully dockerized.
 
