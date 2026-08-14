@@ -165,7 +165,15 @@ connections/messages, and run containers with an appropriate non-root policy.
 
 ## Project Statistics
 
-[![Star History Chart](https://api.star-history.com/svg?repos=feuyeux/hello-websocket&type=Date)](https://star-history.com/#feuyeux/hello-websocket&Date)
+[![Repo size](https://img.shields.io/github/repo-size/feuyeux/hello-websocket)](https://github.com/feuyeux/hello-websocket)
+[![Last commit](https://img.shields.io/github/last-commit/feuyeux/hello-websocket)](https://github.com/feuyeux/hello-websocket/commits/main)
+[![Commit activity](https://img.shields.io/github/commit-activity/m/feuyeux/hello-websocket)](https://github.com/feuyeux/hello-websocket/graphs/commit-activity)
+[![Contributors](https://img.shields.io/github/contributors/feuyeux/hello-websocket)](https://github.com/feuyeux/hello-websocket/graphs/contributors)
+
+Star history: [star-history.com/#feuyeux/hello-websocket](https://star-history.com/#feuyeux/hello-websocket&Date).
+The live embed was removed because GitHub now restricts the stargazer timeline API
+to repository collaborators, so third-party star charts cannot render without an
+owner-supplied token ([details](https://www.star-history.com/blog/github-stargazer-api-restriction)).
 
 ## License
 
