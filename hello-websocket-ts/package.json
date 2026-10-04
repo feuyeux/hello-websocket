@@ -10,11 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "ws": "^8.21.3"
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
-    "@types/ws": "^8.5.10",
+    "@types/ws": "^8.18.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
     "vitest": "^4.1.11"
