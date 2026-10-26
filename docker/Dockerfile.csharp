@@ -5,11 +5,15 @@ RUN dotnet restore hello-websocket-csharp.csproj
 RUN dotnet publish -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS server
+RUN addgroup -S app && adduser -S -G app app
 WORKDIR /app
-COPY --from=build-base /app/publish /app
+COPY --from=build-base --chown=app:app /app/publish /app
+USER app
 ENTRYPOINT ["dotnet", "hello-websocket-csharp.dll"]
 
 FROM mcr.microsoft.com/dotnet/aspnet:9.0-alpine AS client
+RUN addgroup -S app && adduser -S -G app app
 WORKDIR /app
-COPY --from=build-base /app/publish /app
+COPY --from=build-base --chown=app:app /app/publish /app
+USER app
 ENTRYPOINT ["dotnet", "hello-websocket-csharp.dll", "client"]

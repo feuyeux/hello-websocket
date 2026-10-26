@@ -87,9 +87,41 @@ private:
 
 // ─── ByteReader ─────────────────────────────────────────────────────────
 
+// Validate that a byte range is well-formed UTF-8, per PROTOCOL.md §3
+// ("valid UTF-8 bytes"). Mirrors the Rust/Python decoders, which reject
+// malformed sequences instead of accepting arbitrary bytes as text.
+inline bool isValidUtf8(const uint8_t* data, size_t len) {
+    size_t i = 0;
+    while (i < len) {
+        uint8_t b0 = data[i];
+        size_t extra;
+        uint32_t codepoint;
+        uint32_t minCodepoint;
+        if (b0 <= 0x7F) { i += 1; continue; }
+        if ((b0 & 0xE0) == 0xC0) { extra = 1; codepoint = b0 & 0x1F; minCodepoint = 0x80; }
+        else if ((b0 & 0xF0) == 0xE0) { extra = 2; codepoint = b0 & 0x0F; minCodepoint = 0x800; }
+        else if ((b0 & 0xF8) == 0xF0) { extra = 3; codepoint = b0 & 0x07; minCodepoint = 0x10000; }
+        else { return false; } // continuation byte or invalid leading byte
+        if (i + extra >= len) return false; // truncated multi-byte sequence
+        for (size_t k = 1; k <= extra; k++) {
+            uint8_t bk = data[i + k];
+            if ((bk & 0xC0) != 0x80) return false; // not a valid continuation byte
+            codepoint = (codepoint << 6) | (bk & 0x3F);
+        }
+        // Reject overlong encodings and out-of-range/surrogate codepoints.
+        if (codepoint < minCodepoint || codepoint > 0x10FFFF ||
+            (codepoint >= 0xD800 && codepoint <= 0xDFFF)) {
+            return false;
+        }
+        i += extra + 1;
+    }
+    return true;
+}
+
 class ByteReader {
 public:
     ByteReader(const uint8_t* data, size_t len) : data_(data), len_(len), pos_(0) {}
+    size_t remaining() const { return len_ - pos_; }
 
     uint8_t readU8() {
         check(1); return data_[pos_++];
@@ -108,11 +140,13 @@ public:
     std::string readString() {
         auto ln = readU32();
         if (pos_ + ln > len_) throw std::runtime_error("string length exceeds data");
+        if (!isValidUtf8(data_ + pos_, ln)) throw std::runtime_error("string payload is not valid UTF-8");
         std::string s(reinterpret_cast<const char*>(data_ + pos_), ln);
         pos_ += ln; return s;
     }
     std::map<std::string, std::string> readKV() {
         auto count = readU32();
+        if (count > remaining() / 8) throw std::runtime_error("kv count exceeds remaining payload");
         std::map<std::string, std::string> m;
         for (uint32_t i = 0; i < count; i++) {
             auto key = readString();
@@ -147,7 +181,7 @@ inline Frame decodeFrame(const uint8_t* data, size_t len) {
     uint8_t msgType = data[2];
     uint32_t payloadLen = (static_cast<uint32_t>(data[4]) << 24) | (static_cast<uint32_t>(data[5]) << 16)
                         | (static_cast<uint32_t>(data[6]) << 8) | data[7];
-    if (payloadLen > len - HEADER_LEN) throw std::runtime_error("truncated payload");
+    if (payloadLen != len - HEADER_LEN) throw std::runtime_error("payload length mismatch");
     return {msgType, std::vector<uint8_t>(data + HEADER_LEN, data + HEADER_LEN + payloadLen)};
 }
 
@@ -264,6 +298,7 @@ inline Message decodeMessage(const uint8_t* data, size_t len) {
         case MSG_ECHO_RESPONSE: {
             m.echoStatus = r.readI32();
             auto count = r.readU32();
+            if (count > r.remaining() / 13) throw std::runtime_error("result count exceeds remaining payload");
             for (uint32_t i = 0; i < count; i++) {
                 EchoResult er;
                 er.idx = r.readI64();

@@ -101,11 +101,14 @@ class WsServerHandler implements MessageComponentInterface
         });
 
         // Timeout check every 5s
-        $session['timers'][] = $loop->addPeriodicTimer(5.0, function () use ($conn, &$session) {
-            if (!$session['active']) return;
-            if (now_ms() - $session['lastPongTs'] > SESSION_TIMEOUT * 1000) {
-                log_msg('ws-server', "[{$session['userId']}] session timeout");
-                $session['active'] = false;
+        $session['timers'][] = $loop->addPeriodicTimer(5.0, function () use ($conn) {
+            if (!$this->sessions->contains($conn)) return;
+            $current = $this->sessions[$conn];
+            if (!$current['active']) return;
+            if (now_ms() - $current['lastPongTs'] > SESSION_TIMEOUT * 1000) {
+                log_msg('ws-server', "[{$current['userId']}] session timeout");
+                $current['active'] = false;
+                $this->sessions[$conn] = $current;
                 $conn->close();
             }
         });
@@ -119,15 +122,21 @@ class WsServerHandler implements MessageComponentInterface
         if ($session === null) return;
 
         $data = (string)$msg;
+        if (strlen($data) > 1024 * 1024) {
+            log_msg('ws-server', 'Message exceeds 1 MiB limit');
+            $from->close();
+            return;
+        }
         try {
             $msgObj = decode_message($data);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             log_msg('ws-server', "Decode error: " . $e->getMessage());
+            $unknown = str_starts_with($e->getMessage(), 'unknown message type');
             $w = new ByteWriter();
-            $w->writeI32(ERR_DECODE);
+            $w->writeI32($unknown ? ERR_UNKNOWN_MSG_TYPE : ERR_DECODE);
             $w->writeString($e->getMessage());
-            try { sendBinary($from, encode_frame(\HelloWs\Common\MSG_ERROR, $w->data())); } catch (\Exception $ex) {}
-            $from->close();
+            try { sendBinary($from, encode_frame(\HelloWs\Common\MSG_ERROR, $w->data())); } catch (\Throwable $ex) {}
+            if (!$unknown) $from->close();
             return;
         }
 
@@ -162,7 +171,7 @@ class WsServerHandler implements MessageComponentInterface
                 break;
 
             case MSG_PONG:
-                $session['lastPongTs'] = $msgObj->timestampMs;
+                $session['lastPongTs'] = now_ms();
                 $this->sessions->attach($from, $session);
                 break;
 

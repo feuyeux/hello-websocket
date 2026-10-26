@@ -31,7 +31,8 @@ $host = getenv('WS_SERVER') ?: '127.0.0.1';
 $port = (int)(getenv('WS_PORT') ?: PORT);
 
 log_msg('ws-client', "Starting PHP WebSocket client [version: 1.0.0]");
-$url = "ws://$host:$port";
+$path = getenv('WS_PATH') ?: '/ws';
+$url = "ws://$host:$port$path";
 log_msg('ws-client', "Connecting to $url");
 
 $loop = Loop::get();
@@ -41,7 +42,8 @@ $maxAttempts = 3;
 function tryConnect(string $host, int $port, int $attempt): void
 {
     global $loop, $connected, $maxAttempts;
-    $url = "ws://$host:$port";
+    $path = getenv('WS_PATH') ?: '/ws';
+    $url = "ws://$host:$port$path";
     log_msg('ws-client', "Connection attempt $attempt/$maxAttempts to $url");
 
     $userId = 'php-client-' . now_ms();

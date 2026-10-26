@@ -1,0 +1,65 @@
+name: Docker Dependency Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docker/Dockerfile.*"
+      - "docker/build_image.sh"
+      - "hello-websocket-java/pom.xml"
+      - "hello-websocket-kotlin/**/*.gradle*"
+      - "hello-websocket-kotlin/**/gradle.lockfile"
+      - "hello-websocket-go/go.mod"
+      - "hello-websocket-go/go.sum"
+      - "hello-websocket-rust/Cargo.toml"
+      - "hello-websocket-rust/Cargo.lock"
+      - "hello-websocket-nodejs/package*.json"
+      - "hello-websocket-ts/package*.json"
+      - "hello-websocket-dart/pubspec.*"
+      - "hello-websocket-php/composer.*"
+      - "hello-websocket-python/requirements*.txt"
+      - "hello-websocket-csharp/**/*.csproj"
+      - "hello-websocket-csharp/**/packages.lock.json"
+      - "hello-websocket-swift/Package.swift"
+      - "hello-websocket-swift/Package.resolved"
+      - ".github/dependabot.yml"
+      - ".github/workflows/docker-dependency-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-dependency-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        language: [cpp, csharp, dart, go, java, kotlin, node, php, python, rust, swift, ts]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build server image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.${{ matrix.language }}
+          target: server
+          push: false
+          cache-from: type=gha,scope=${{ matrix.language }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.language }}
+
+      - name: Build client image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile.${{ matrix.language }}
+          target: client
+          push: false
+          cache-from: type=gha,scope=${{ matrix.language }}

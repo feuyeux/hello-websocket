@@ -1,9 +1,11 @@
 using System.Net.WebSockets;
+using System.Threading.Channels;
 
 namespace HelloWebSocket;
 
 public class WsClient
 {
+    private const int MaxMessageBytes = 1024 * 1024;
     private readonly string _host;
     private readonly int _port;
     private readonly Random _rng = new();
@@ -12,11 +14,12 @@ public class WsClient
 
     public async Task RunAsync()
     {
-        var url = $"ws://{_host}:{_port}/ws";
+        var path = Environment.GetEnvironmentVariable("WS_PATH") ?? "/ws";
+        var url = $"ws://{_host}:{_port}{path}";
         Codec.Log("ws-client", "Starting C# WebSocket client [version: 1.0.0]");
         Codec.Log("ws-client", $"Connecting to {url}");
 
-        for (int attempt = 1; attempt <= 3; attempt++)
+        for (var attempt = 1; attempt <= 3; attempt++)
         {
             Codec.Log("ws-client", $"Connection attempt {attempt}/3 to {url}");
             try { await TryConnect(url); return; }
@@ -26,62 +29,96 @@ public class WsClient
                 if (attempt < 3) await Task.Delay(2000);
             }
         }
+
         Codec.Log("ws-client", "Failed to connect after 3 attempts");
-        Environment.Exit(1);
+        Environment.ExitCode = 1;
     }
 
     private async Task TryConnect(string url)
     {
         using var ws = new ClientWebSocket();
+        using var cts = new CancellationTokenSource();
         ws.Options.SetRequestHeader("userId", $"csharp-client-{Guid.NewGuid().ToString()[..8]}");
-        await ws.ConnectAsync(new Uri(url), CancellationToken.None);
+        await ws.ConnectAsync(new Uri(url), cts.Token);
         Codec.Log("ws-client", "Connected");
 
-        // Send HELLO
-        await ws.SendAsync(Codec.Hello(Codec.CLIENT_LANG).Encode(), WebSocketMessageType.Binary, true, CancellationToken.None);
-
-        // Random number background task
-        var randomId = 1L;
-        var randomTask = Task.Run(async () =>
+        var outgoing = Channel.CreateBounded<byte[]>(new BoundedChannelOptions(256)
         {
-            while (ws.State == WebSocketState.Open)
-            {
-                await Task.Delay((int)Codec.RANDOM_INTERVAL_MS);
-                if (ws.State != WebSocketState.Open) break;
-                var num = _rng.NextInt64();
-                await ws.SendAsync(Codec.RandomNumberMsg(randomId, num).Encode(), WebSocketMessageType.Binary, true, CancellationToken.None);
-                Codec.Log("ws-client", $"RANDOM_NUMBER id={randomId} number={num}");
-                randomId++;
-            }
+            FullMode = BoundedChannelFullMode.DropWrite,
+            SingleReader = true,
+            SingleWriter = false,
         });
+        var sendTask = RunSendTask(ws, outgoing.Reader, cts.Token);
+        outgoing.Writer.TryWrite(Codec.Hello(Codec.CLIENT_LANG).Encode());
 
-        // Receive loop
-        var buffer = new byte[65536];
+        var randomTask = RunRandomTask(outgoing.Writer, cts.Token);
         try
         {
             while (ws.State == WebSocketState.Open)
             {
-                var result = await ws.ReceiveAsync(buffer, CancellationToken.None);
-                if (result.MessageType == WebSocketMessageType.Close) break;
-                if (result.Count > 0)
-                {
-                    var data = new byte[result.Count];
-                    Array.Copy(buffer, data, result.Count);
-                    HandleMessage(ws, data);
-                }
+                var data = await ReceiveMessageAsync(ws, cts.Token);
+                if (data is null) break;
+                HandleMessage(data, outgoing.Writer);
             }
         }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested) { }
         catch (WebSocketException) { }
-
-        // Send DISCONNECT
-        if (ws.State == WebSocketState.Open)
+        finally
         {
-            await ws.SendAsync(Codec.DisconnectMsg("client shutdown").Encode(), WebSocketMessageType.Binary, true, CancellationToken.None);
-            await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "shutdown", CancellationToken.None);
+            if (ws.State == WebSocketState.Open)
+                outgoing.Writer.TryWrite(Codec.DisconnectMsg("client shutdown").Encode());
+            outgoing.Writer.TryComplete();
+            try { await sendTask; } catch (OperationCanceledException) { }
+            cts.Cancel();
+            try { await randomTask; } catch (OperationCanceledException) { }
+            if (ws.State == WebSocketState.Open)
+            {
+                try { await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "shutdown", CancellationToken.None); }
+                catch { ws.Abort(); }
+            }
         }
     }
 
-    private void HandleMessage(ClientWebSocket ws, byte[] data)
+    private async Task RunRandomTask(ChannelWriter<byte[]> outgoing, CancellationToken ct)
+    {
+        var randomId = 1L;
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(Codec.RANDOM_INTERVAL_MS));
+        while (await timer.WaitForNextTickAsync(ct))
+        {
+            var num = _rng.NextInt64();
+            if (!outgoing.TryWrite(Codec.RandomNumberMsg(randomId, num).Encode())) break;
+            Codec.Log("ws-client", $"RANDOM_NUMBER id={randomId} number={num}");
+            randomId++;
+        }
+    }
+
+    private static async Task RunSendTask(ClientWebSocket ws, ChannelReader<byte[]> outgoing, CancellationToken ct)
+    {
+        await foreach (var data in outgoing.ReadAllAsync(ct))
+        {
+            if (ws.State != WebSocketState.Open) break;
+            await ws.SendAsync(data, WebSocketMessageType.Binary, true, ct);
+        }
+    }
+
+    private static async Task<byte[]?> ReceiveMessageAsync(ClientWebSocket ws, CancellationToken ct)
+    {
+        var buffer = new byte[16 * 1024];
+        using var message = new MemoryStream();
+        while (true)
+        {
+            var result = await ws.ReceiveAsync(buffer, ct);
+            if (result.MessageType == WebSocketMessageType.Close) return null;
+            if (result.MessageType != WebSocketMessageType.Binary)
+                throw new WebSocketException(WebSocketError.UnsupportedProtocol, "Only binary messages are supported");
+            if (message.Length + result.Count > MaxMessageBytes)
+                throw new WebSocketException(WebSocketError.HeaderError, "Message exceeds 1 MiB limit");
+            message.Write(buffer, 0, result.Count);
+            if (result.EndOfMessage) return message.ToArray();
+        }
+    }
+
+    private static void HandleMessage(byte[] data, ChannelWriter<byte[]> outgoing)
     {
         Codec.Message msg;
         try { msg = Codec.DecodeMessage(data); }
@@ -92,42 +129,23 @@ public class WsClient
             case Codec.MSG_BONJOUR:
                 Codec.Log("ws-client", $"BONJOUR server_language={msg.ServerLanguage}");
                 break;
-
             case Codec.MSG_PING:
-                Codec.Log("ws-client", $"PING ts={msg.TimestampMs}");
-                _ = ws.SendAsync(Codec.Pong(msg.TimestampMs).Encode(), WebSocketMessageType.Binary, true, CancellationToken.None);
-                Codec.Log("ws-client", $"PONG ts={msg.TimestampMs}");
+                outgoing.TryWrite(Codec.Pong(msg.TimestampMs).Encode());
                 break;
-
             case Codec.MSG_TIME_NOTIFICATION:
                 Codec.Log("ws-client", $"TIME_NOTIFICATION ts={msg.TimestampMs} iso={msg.Iso8601}");
                 break;
-
             case Codec.MSG_KISS_REQUEST:
-                Codec.Log("ws-client", $"KISS_REQUEST os={msg.OsName} ver={msg.OsVersion} rel={msg.OsRelease} arch={msg.OsArch}");
-                _ = ws.SendAsync(Codec.KissResponse("en_US", "UTF-8", TimeZoneInfo.Local.Id).Encode(), WebSocketMessageType.Binary, true, CancellationToken.None);
-                Codec.Log("ws-client", "KISS_RESPONSE sent");
+                outgoing.TryWrite(Codec.KissResponse("en_US", "UTF-8", TimeZoneInfo.Local.Id).Encode());
                 break;
-
             case Codec.MSG_ECHO_RESPONSE:
                 Codec.Log("ws-client", $"ECHO_RESPONSE status={msg.EchoStatus} results={msg.EchoResults!.Length}");
-                for (int i = 0; i < msg.EchoResults.Length; i++)
-                {
-                    var r = msg.EchoResults[i];
-                    Codec.Log("ws-client", $"  Result #{i + 1}: idx={r.Idx} type={r.Type} kv={string.Join(",", r.Kv.Select(k => $"{k.Key}={k.Value}"))}");
-                }
                 break;
-
             case Codec.MSG_HASH_RESPONSE:
                 Codec.Log("ws-client", $"HASH_RESPONSE id={msg.RandomId} hash={msg.HashHex}");
                 break;
-
             case Codec.MSG_ERROR:
                 Codec.Log("ws-client", $"ERROR code={msg.ErrorCode} msg={msg.ErrorMessage}");
-                break;
-
-            default:
-                Codec.Log("ws-client", $"Unknown message type: 0x{msg.Type:x2}");
                 break;
         }
     }

@@ -21,6 +21,10 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+# pytest/type-checker caches produced by hello-websocket-python/scripts/build.sh
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # Node.js / TypeScript
 node_modules/
@@ -196,3 +200,5 @@ hello-websocket-python/ws_env
 *.log.gz
 
 arthas-output
+dependency-reduced-pom.xml
+.local/

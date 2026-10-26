@@ -1,6 +1,6 @@
 # Hello WebSocket - PHP Implementation
 
-PHP implementation of the Hello WebSocket protocol using [Ratchet](https://github.com/ratchetphp/Ratchet) (server, ReactPHP) and [textalk/websocket](https://github.com/Textalk/websocket-php) (client).
+PHP implementation using [Ratchet](https://github.com/ratchetphp/Ratchet) for the server and [Pawl](https://github.com/ratchetphp/Pawl) for the client.
 
 ## Project Structure
 
@@ -49,7 +49,8 @@ composer test
 ```
 
 Environment variables:
-- `WS_SERVER_PORT` — Port to listen on (default: 9898)
+- `WS_PORT` — Port to listen on (default: 9898)
+- `WS_PATH` — WebSocket path (default: /ws)
 
 ## Run Client
 
@@ -58,8 +59,9 @@ Environment variables:
 ```
 
 Environment variables:
-- `WS_SERVER_HOST` — Server host (default: 127.0.0.1)
-- `WS_SERVER_PORT` — Server port (default: 9898)
+- `WS_SERVER` — Server host (default: 127.0.0.1)
+- `WS_PORT` — Server port (default: 9898)
+- `WS_PATH` — WebSocket path (default: /ws)
 
 ## Protocol
 

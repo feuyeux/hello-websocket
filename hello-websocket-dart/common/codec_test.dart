@@ -8,8 +8,20 @@ void main() {
     final msg = hello('Go');
     final data = msg.encode();
     final expected = Uint8List.fromList([
-      0x48, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x06,
-      0x00, 0x00, 0x00, 0x02, 0x47, 0x6F,
+      0x48,
+      0x01,
+      0x01,
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x06,
+      0x00,
+      0x00,
+      0x00,
+      0x02,
+      0x47,
+      0x6F,
     ]);
     expect(data, equals(expected));
   });
@@ -18,7 +30,10 @@ void main() {
     final messages = [
       hello('Dart'),
       bonjour('Java'),
-      Message(msgEchoRequest)..echoId = 42..echoMeta = 'Python'..echoData = 'hello',
+      Message(msgEchoRequest)
+        ..echoId = 42
+        ..echoMeta = 'Python'
+        ..echoData = 'hello',
       ping(1700000000000),
       pong(1700000000001),
       timeNotif(1700000000000, '2023-11-14T22:13:20Z'),
@@ -36,7 +51,9 @@ void main() {
   test('Round-trip EchoResponse', () {
     final orig = Message(msgEchoResponse)
       ..echoStatus = 200
-      ..echoResults = [EchoResult(123, 0, {'id': '1', 'data': 'Hello'})];
+      ..echoResults = [
+        EchoResult(123, 0, {'id': '1', 'data': 'Hello'})
+      ];
     final decoded = decodeMessage(orig.encode());
     expect(decoded.type, equals(msgEchoResponse));
     expect(decoded.echoStatus, equals(200));
@@ -53,17 +70,20 @@ void main() {
   });
 
   test('Bad magic rejected', () {
-    final data = Uint8List.fromList([0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    final data =
+        Uint8List.fromList([0x00, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]);
     expect(() => decodeFrame(data), throwsException);
   });
 
   test('Bad version rejected', () {
-    final data = Uint8List.fromList([0x48, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    final data =
+        Uint8List.fromList([0x48, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]);
     expect(() => decodeFrame(data), throwsException);
   });
 
   test('Truncated payload rejected', () {
-    final data = Uint8List.fromList([0x48, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0xFF]);
+    final data =
+        Uint8List.fromList([0x48, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0xFF]);
     expect(() => decodeFrame(data), throwsException);
   });
 
@@ -120,12 +140,15 @@ void main() {
   });
 
   test('Unknown message type rejected', () {
-    final data = Uint8List.fromList([0x48, 0x01, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    final data =
+        Uint8List.fromList([0x48, 0x01, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00]);
     expect(() => decodeMessage(data), throwsException);
   });
 
   test('Empty EchoResponse results array', () {
-    final orig = Message(msgEchoResponse)..echoStatus = 204..echoResults = [];
+    final orig = Message(msgEchoResponse)
+      ..echoStatus = 204
+      ..echoResults = [];
     final decoded = decodeMessage(orig.encode());
     expect(decoded.echoStatus, equals(204));
     expect(decoded.echoResults!.length, equals(0));

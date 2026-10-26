@@ -1,6 +1,6 @@
 # Hello WebSocket - Java Implementation
 
-Java implementation of the Hello WebSocket protocol using [Java-WebSocket](https://github.com/TakahikoKawasaki/nv-websocket-client) and [Gson](https://github.com/google/gson).
+Java implementation of the Hello WebSocket protocol using [Java-WebSocket](https://github.com/TooTallNate/Java-WebSocket).
 
 ## Project Structure
 
@@ -44,7 +44,8 @@ mvn clean package -DskipTests
 ```
 
 Environment variables:
-- `WS_SERVER_PORT` — Port to listen on (default: 9898)
+- `WS_PORT` — Port to listen on (default: 9898)
+- `WS_PATH` — WebSocket path (default: /ws)
 
 ## Run Client
 
@@ -53,8 +54,9 @@ Environment variables:
 ```
 
 Environment variables:
-- `WS_SERVER_HOST` — Server host (default: 127.0.0.1)
-- `WS_SERVER_PORT` — Server port (default: 9898)
+- `WS_SERVER` — Server host (default: 127.0.0.1)
+- `WS_PORT` — Server port (default: 9898)
+- `WS_PATH` — WebSocket path (default: /ws)
 
 ## Protocol
 

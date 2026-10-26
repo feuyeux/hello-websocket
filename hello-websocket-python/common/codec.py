@@ -96,39 +96,54 @@ class ByteReader:
         self.data = data
         self.pos = 0
 
+    def remaining(self) -> int:
+        return len(self.data) - self.pos
+
+    def require(self, size: int, field: str):
+        if size < 0 or size > self.remaining():
+            raise ValueError(f"{field} requires {size} bytes, only {self.remaining()} remain")
+
     def read_u8(self) -> int:
+        self.require(1, "u8")
         v = self.data[self.pos]
         self.pos += 1
         return v
 
     def read_u16(self) -> int:
+        self.require(2, "u16")
         v = struct.unpack(">H", self.data[self.pos:self.pos + 2])[0]
         self.pos += 2
         return v
 
     def read_u32(self) -> int:
+        self.require(4, "u32")
         v = struct.unpack(">I", self.data[self.pos:self.pos + 4])[0]
         self.pos += 4
         return v
 
     def read_i32(self) -> int:
+        self.require(4, "i32")
         v = struct.unpack(">i", self.data[self.pos:self.pos + 4])[0]
         self.pos += 4
         return v
 
     def read_i64(self) -> int:
+        self.require(8, "i64")
         v = struct.unpack(">q", self.data[self.pos:self.pos + 8])[0]
         self.pos += 8
         return v
 
     def read_string(self) -> str:
         ln = self.read_u32()
+        self.require(ln, "string")
         s = self.data[self.pos:self.pos + ln].decode("utf-8")
         self.pos += ln
         return s
 
     def read_kv(self) -> dict:
         count = self.read_u32()
+        if count > self.remaining() // 8:
+            raise ValueError(f"kv count {count} exceeds remaining payload")
         m = {}
         for _ in range(count):
             k = self.read_string()
@@ -145,19 +160,35 @@ def encode_frame(msg_type: int, payload: bytes) -> bytes:
     return header + payload
 
 
+class CodecError(ValueError):
+    """A decode failure carrying the precise PROTOCOL.md §7 error code.
+
+    Lets callers (e.g. the server's receive loop) classify a decode failure
+    exactly instead of pattern-matching the error message text, which
+    silently breaks if the wording ever changes.
+    """
+
+    def __init__(self, code: int, message: str):
+        super().__init__(message)
+        self.code = code
+
+
 def decode_frame(data: bytes):
     if len(data) < HEADER_LEN:
-        raise ValueError(f"frame too short: {len(data)} bytes")
+        raise CodecError(ERR_TRUNCATED_PAYLOAD, f"frame too short: {len(data)} bytes")
     magic = data[0]
     if magic != MAGIC:
-        raise ValueError(f"bad magic: 0x{magic:02x}")
+        raise CodecError(ERR_BAD_MAGIC, f"bad magic: 0x{magic:02x}")
     version = data[1]
     if version != VERSION:
-        raise ValueError(f"bad version: 0x{version:02x}")
+        raise CodecError(ERR_BAD_VERSION, f"bad version: 0x{version:02x}")
     msg_type = data[2]
     payload_len = struct.unpack(">I", data[4:8])[0]
-    if payload_len > len(data) - HEADER_LEN:
-        raise ValueError(f"truncated payload: declared {payload_len}, available {len(data) - HEADER_LEN}")
+    if payload_len != len(data) - HEADER_LEN:
+        raise CodecError(
+            ERR_TRUNCATED_PAYLOAD,
+            f"payload length mismatch: declared {payload_len}, available {len(data) - HEADER_LEN}",
+        )
     return msg_type, data[HEADER_LEN:HEADER_LEN + payload_len]
 
 
@@ -362,6 +393,8 @@ def decode_message(data: bytes) -> Message:
     elif msg_type == MSG_ECHO_RESPONSE:
         status = r.read_i32()
         count = r.read_u32()
+        if count > r.remaining() // 13:
+            raise ValueError(f"result count {count} exceeds remaining payload")
         results = []
         for _ in range(count):
             idx = r.read_i64()
@@ -391,7 +424,7 @@ def decode_message(data: bytes) -> Message:
     elif msg_type == MSG_ERROR:
         msg.error = ErrorMsg(code=r.read_i32(), message=r.read_string())
     else:
-        raise ValueError(f"unknown message type: 0x{msg_type:02x}")
+        raise CodecError(ERR_UNKNOWN_MSG_TYPE, f"unknown message type: 0x{msg_type:02x}")
 
     return msg
 

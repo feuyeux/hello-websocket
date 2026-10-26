@@ -7,14 +7,15 @@ import (
 	"math"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 // ─── Constants ───────────────────────────────────────────────────────────
 
 const (
 	Port            = 9898
-	Magic     byte  = 0x48
-	Version   byte  = 0x01
+	Magic      byte = 0x48
+	Version    byte = 0x01
 	HeaderLen       = 8
 	ServerLang      = "GO"
 	ClientLang      = "GO"
@@ -39,7 +40,7 @@ const (
 
 // Error codes
 const (
-	ErrDecode            int32 = 0x01
+	ErrDecode           int32 = 0x01
 	ErrUnknownMsgType   int32 = 0x02
 	ErrTruncatedPayload int32 = 0x03
 	ErrBadMagic         int32 = 0x04
@@ -50,11 +51,11 @@ const (
 
 // Intervals
 const (
-	PingInterval       = 1 * time.Second
-	SessionTimeout     = 60 * time.Second
-	TimeInterval       = 5 * time.Second
-	RandomInterval     = 5 * time.Second
-	KissInterval       = 5 * time.Second
+	PingInterval   = 1 * time.Second
+	SessionTimeout = 60 * time.Second
+	TimeInterval   = 5 * time.Second
+	RandomInterval = 5 * time.Second
+	KissInterval   = 5 * time.Second
 )
 
 // ─── Primitive Encoders ──────────────────────────────────────────────────
@@ -110,6 +111,8 @@ type Reader struct {
 	pos  int
 }
 
+func (r *Reader) Remaining() int { return len(r.data) - r.pos }
+
 func NewReader(data []byte) *Reader {
 	return &Reader{data: data}
 }
@@ -163,7 +166,15 @@ func (r *Reader) ReadString() (string, error) {
 	if r.pos+int(ln) > len(r.data) {
 		return "", fmt.Errorf("string length %d exceeds remaining data", ln)
 	}
-	s := string(r.data[r.pos : r.pos+int(ln)])
+	b := r.data[r.pos : r.pos+int(ln)]
+	// PROTOCOL.md §3 requires string payloads to be valid UTF-8 bytes.
+	// Reject invalid sequences instead of silently accepting them, matching
+	// the Rust/Python decoders (previously this used a raw string()
+	// conversion, which never validates well-formedness).
+	if !utf8.Valid(b) {
+		return "", fmt.Errorf("string payload is not valid UTF-8")
+	}
+	s := string(b)
 	r.pos += int(ln)
 	return s, nil
 }
@@ -173,7 +184,10 @@ func (r *Reader) ReadKV() (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	m := make(map[string]string, count)
+	if uint64(count) > uint64(r.Remaining()/8) {
+		return nil, fmt.Errorf("kv count %d exceeds remaining payload", count)
+	}
+	m := make(map[string]string, int(count))
 	for i := uint32(0); i < count; i++ {
 		k, err := r.ReadString()
 		if err != nil {
@@ -190,6 +204,21 @@ func (r *Reader) ReadKV() (map[string]string, error) {
 
 // ─── Frame Codec ─────────────────────────────────────────────────────────
 
+// CodecError carries the precise PROTOCOL.md §7 error code alongside the
+// human-readable message, so callers (e.g. the server's receive loop) can
+// classify a decode failure exactly instead of pattern-matching on the
+// error text — which silently breaks if the message wording ever changes.
+type CodecError struct {
+	Code    int32
+	Message string
+}
+
+func (e *CodecError) Error() string { return e.Message }
+
+func newCodecError(code int32, format string, args ...interface{}) *CodecError {
+	return &CodecError{Code: code, Message: fmt.Sprintf(format, args...)}
+}
+
 func EncodeFrame(msgType byte, payload []byte) []byte {
 	buf := make([]byte, HeaderLen+len(payload))
 	buf[0] = Magic
@@ -203,18 +232,19 @@ func EncodeFrame(msgType byte, payload []byte) []byte {
 
 func DecodeFrame(data []byte) (msgType byte, payload []byte, err error) {
 	if len(data) < HeaderLen {
-		return 0, nil, fmt.Errorf("frame too short: %d bytes", len(data))
+		return 0, nil, newCodecError(ErrTruncatedPayload, "frame too short: %d bytes", len(data))
 	}
 	if data[0] != Magic {
-		return 0, nil, fmt.Errorf("bad magic: 0x%02x", data[0])
+		return 0, nil, newCodecError(ErrBadMagic, "bad magic: 0x%02x", data[0])
 	}
 	if data[1] != Version {
-		return 0, nil, fmt.Errorf("bad version: 0x%02x", data[1])
+		return 0, nil, newCodecError(ErrBadVersion, "bad version: 0x%02x", data[1])
 	}
 	msgType = data[2]
 	payloadLen := binary.BigEndian.Uint32(data[4:])
-	if int(payloadLen) > len(data)-HeaderLen {
-		return 0, nil, fmt.Errorf("truncated payload: declared %d, available %d", payloadLen, len(data)-HeaderLen)
+	if int(payloadLen) != len(data)-HeaderLen {
+		return 0, nil, newCodecError(ErrTruncatedPayload,
+			"payload length mismatch: declared %d, available %d", payloadLen, len(data)-HeaderLen)
 	}
 	payload = data[HeaderLen : HeaderLen+int(payloadLen)]
 	return msgType, payload, nil
@@ -320,7 +350,10 @@ func DecodeEchoResponse(r *Reader) (*EchoResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	results := make([]EchoResult, 0, count)
+	if uint64(count) > uint64(r.Remaining()/13) {
+		return nil, fmt.Errorf("result count %d exceeds remaining payload", count)
+	}
+	results := make([]EchoResult, 0, int(count))
 	for i := uint32(0); i < count; i++ {
 		idx, err := r.ReadI64()
 		if err != nil {
@@ -558,20 +591,20 @@ func DecodeErrorMsg(r *Reader) (*ErrorMsg, error) {
 // ─── Message Dispatch ────────────────────────────────────────────────────
 
 type Message struct {
-	Type     byte
-	Hello    *Hello
-	Bonjour  *Bonjour
-	EchoReq  *EchoRequest
-	EchoResp *EchoResponse
-	KissReq  *KissRequest
-	KissResp *KissResponse
-	Ping     *Ping
-	Pong     *Pong
-	TimeNotif *TimeNotification
-	Random   *RandomNumber
-	Hash     *HashResponse
+	Type       byte
+	Hello      *Hello
+	Bonjour    *Bonjour
+	EchoReq    *EchoRequest
+	EchoResp   *EchoResponse
+	KissReq    *KissRequest
+	KissResp   *KissResponse
+	Ping       *Ping
+	Pong       *Pong
+	TimeNotif  *TimeNotification
+	Random     *RandomNumber
+	Hash       *HashResponse
 	Disconnect *Disconnect
-	Error    *ErrorMsg
+	Error      *ErrorMsg
 }
 
 func DecodeMessage(data []byte) (*Message, error) {
@@ -609,7 +642,7 @@ func DecodeMessage(data []byte) (*Message, error) {
 	case MsgError:
 		msg.Error, err = DecodeErrorMsg(r)
 	default:
-		return nil, fmt.Errorf("unknown message type: 0x%02x", msgType)
+		return nil, newCodecError(ErrUnknownMsgType, "unknown message type: 0x%02x", msgType)
 	}
 	if err != nil {
 		return nil, err

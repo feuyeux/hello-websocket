@@ -89,13 +89,19 @@ public class WsServer extends WebSocketServer {
     }
 
     private void onBinaryMessage(WebSocket conn, byte[] data) {
+        if (data.length > 1024 * 1024) {
+            conn.close(1009, "message exceeds 1 MiB");
+            return;
+        }
         Session session = conn.getAttachment();
         Codec.Message msg;
         try {
             msg = Codec.decodeMessage(data);
         } catch (Codec.DecodeException e) {
             Codec.log("ws-server", "Decode error: " + e.getMessage());
-            conn.send(Codec.error(Codec.ERR_DECODE, e.getMessage()).encode());
+            boolean unknown = e.getMessage().startsWith("unknown message type");
+            conn.send(Codec.error(unknown ? Codec.ERR_UNKNOWN_MSG_TYPE : Codec.ERR_DECODE, e.getMessage()).encode());
+            if (!unknown) conn.close(1002, "invalid protocol frame");
             return;
         }
 
@@ -119,7 +125,7 @@ public class WsServer extends WebSocketServer {
                 Codec.log("ws-server", "KISS_RESPONSE lang=" + msg.kissLanguage + " enc=" + msg.kissEncoding + " tz=" + msg.kissTimeZone);
             }
             case Codec.MSG_PONG -> {
-                session.lastPongTs.set(msg.timestampMs);
+                session.lastPongTs.set(Codec.nowMs());
                 Codec.log("ws-server", "PONG ts=" + msg.timestampMs);
             }
             case Codec.MSG_RANDOM_NUMBER -> {

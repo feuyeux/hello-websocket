@@ -2,6 +2,8 @@ package io.github.hellowebsocket;
 
 import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -116,6 +118,7 @@ public final class Codec {
         private int pos;
 
         public ByteReader(byte[] data) { this.data = data; this.pos = 0; }
+        public int remaining() { return data.length - pos; }
 
         public int readU8() throws DecodeException {
             if (pos + 1 > data.length) throw new DecodeException("unexpected end of data reading u8");
@@ -152,13 +155,28 @@ public final class Codec {
         public String readString() throws DecodeException {
             long ln = readU32();
             if (pos + ln > data.length) throw new DecodeException("string length " + ln + " exceeds remaining data");
-            String s = new String(data, pos, (int) ln, StandardCharsets.UTF_8);
+            // PROTOCOL.md §3 requires string payloads to be "valid UTF-8 bytes".
+            // new String(bytes, UTF_8) silently substitutes U+FFFD for malformed
+            // input, which would accept frames that the Go, C++, Node.js,
+            // TypeScript, Python, Rust and Dart decoders all reject. Decode
+            // strictly so every implementation agrees on what is a valid frame.
+            String s;
+            try {
+                s = StandardCharsets.UTF_8.newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(CodingErrorAction.REPORT)
+                        .decode(ByteBuffer.wrap(data, pos, (int) ln))
+                        .toString();
+            } catch (CharacterCodingException e) {
+                throw new DecodeException("string payload is not valid UTF-8");
+            }
             pos += ln;
             return s;
         }
 
         public Map<String, String> readKV() throws DecodeException {
             long count = readU32();
+            if (count > remaining() / 8) throw new DecodeException("kv count " + count + " exceeds remaining payload");
             Map<String, String> m = new LinkedHashMap<>((int) count);
             for (long i = 0; i < count; i++) {
                 String k = readString();
@@ -199,8 +217,8 @@ public final class Codec {
         byte msgType = data[2];
         long payloadLen = ((long)(data[4] & 0xFF) << 24) | ((long)(data[5] & 0xFF) << 16)
                         | ((long)(data[6] & 0xFF) << 8) | (data[7] & 0xFF);
-        if (payloadLen > data.length - HEADER_LEN)
-            throw new DecodeException("truncated payload: declared " + payloadLen + ", available " + (data.length - HEADER_LEN));
+        if (payloadLen != data.length - HEADER_LEN)
+            throw new DecodeException("payload length mismatch: declared " + payloadLen + ", available " + (data.length - HEADER_LEN));
         byte[] payload = new byte[(int) payloadLen];
         System.arraycopy(data, HEADER_LEN, payload, 0, (int) payloadLen);
         return new Frame(msgType, payload);
@@ -261,6 +279,7 @@ public final class Codec {
             case MSG_ECHO_RESPONSE -> {
                 m.echoStatus = r.readI32();
                 long count = r.readU32();
+                if (count > r.remaining() / 13) throw new DecodeException("result count " + count + " exceeds remaining payload");
                 m.echoResults = new EchoResult[(int) count];
                 for (int i = 0; i < count; i++) {
                     long idx = r.readI64();

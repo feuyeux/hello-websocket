@@ -48,7 +48,8 @@ Or manually:
 ```
 
 Environment variables:
-- `WS_SERVER_PORT` — Port to listen on (default: 9898)
+- `WS_PORT` — Port to listen on (default: 9898)
+- `WS_PATH` — WebSocket path (default: /ws)
 
 ## Run Client
 
@@ -58,8 +59,9 @@ Environment variables:
 ```
 
 Environment variables:
-- `WS_SERVER_HOST` — Server host (default: 127.0.0.1)
-- `WS_SERVER_PORT` — Server port (default: 9898)
+- `WS_SERVER` — Server host (default: 127.0.0.1)
+- `WS_PORT` — Server port (default: 9898)
+- `WS_PATH` — WebSocket path (default: /ws)
 
 ## Protocol
 

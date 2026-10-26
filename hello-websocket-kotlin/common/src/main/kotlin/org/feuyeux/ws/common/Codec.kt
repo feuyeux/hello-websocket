@@ -3,6 +3,8 @@
 package org.feuyeux.ws.common
 
 import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.CodingErrorAction
 import java.security.MessageDigest
 import java.time.Instant
 import java.time.ZoneOffset
@@ -80,6 +82,7 @@ class ByteWriter {
 
 class ByteReader(private val data: ByteArray) {
     private var pos = 0
+    fun remaining(): Int = data.size - pos
 
     fun readU8(): Int {
         check(1)
@@ -108,13 +111,26 @@ class ByteReader(private val data: ByteArray) {
     }
     fun readString(): String {
         val len = readU32()
-        if (pos + len > data.size) throw IllegalStateException("string length $len exceeds remaining data")
-        val s = String(data, pos, len, Charsets.UTF_8)
+        if (len < 0 || len > remaining()) throw IllegalStateException("string length $len exceeds remaining data")
+        // PROTOCOL.md §3 requires string payloads to be "valid UTF-8 bytes".
+        // String(data, pos, len, Charsets.UTF_8) substitutes U+FFFD for malformed
+        // input, so decode strictly to reject the frames that the Go, C++,
+        // Node.js, TypeScript, Python, Rust and Dart decoders reject.
+        val s = try {
+            Charsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(data, pos, len))
+                .toString()
+        } catch (e: CharacterCodingException) {
+            throw IllegalStateException("string payload is not valid UTF-8")
+        }
         pos += len
         return s
     }
     fun readKV(): Map<String, String> {
         val count = readU32()
+        if (count < 0 || count > remaining() / 8) throw IllegalStateException("kv count $count exceeds remaining payload")
         val m = LinkedHashMap<String, String>(count)
         for (i in 0 until count) {
             val key = readString()
@@ -154,8 +170,8 @@ fun decodeFrame(data: ByteArray): Frame {
                      ((data[5].toInt() and 0xFF) shl 16) or
                      ((data[6].toInt() and 0xFF) shl 8) or
                      (data[7].toInt() and 0xFF)
-    if (payloadLen > data.size - HEADER_LEN)
-        throw IllegalStateException("truncated payload: declared $payloadLen, available ${data.size - HEADER_LEN}")
+    if (payloadLen < 0 || payloadLen != data.size - HEADER_LEN)
+        throw IllegalStateException("payload length mismatch: declared $payloadLen, available ${data.size - HEADER_LEN}")
     return Frame(msgType, data.copyOfRange(HEADER_LEN, HEADER_LEN + payloadLen))
 }
 
@@ -216,6 +232,7 @@ fun decodeMessage(data: ByteArray): Message {
         MSG_ECHO_RESPONSE -> {
             m.echoStatus = r.readI32()
             val count = r.readU32()
+            if (count < 0 || count > r.remaining() / 13) throw IllegalStateException("result count $count exceeds remaining payload")
             val results = ArrayList<EchoResult>(count)
             for (i in 0 until count) {
                 val er = EchoResult()

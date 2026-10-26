@@ -1,5 +1,5 @@
 plugins {
-    kotlin("jvm") version "2.2.21" apply false
+    kotlin("jvm") version "2.4.21" apply false
 }
 
 subprojects {
@@ -7,6 +7,10 @@ subprojects {
 
     repositories {
         mavenCentral()
+    }
+
+    dependencyLocking {
+        lockAllConfigurations()
     }
 
     dependencies {

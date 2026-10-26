@@ -92,6 +92,18 @@ class CodecTest {
     }
 
     @Test
+    @DisplayName("Invalid UTF-8 string payload rejected")
+    void testInvalidUtf8StringRejected() {
+        // HELLO payload declaring a 1-byte string whose only byte is 0xFF, which
+        // is never a valid UTF-8 lead byte. PROTOCOL.md §3 requires "valid UTF-8
+        // bytes", so the decoder must reject the frame instead of silently
+        // substituting U+FFFD.
+        byte[] payload = {0x00, 0x00, 0x00, 0x01, (byte)0xFF};
+        byte[] frame = Codec.encodeFrame(Codec.MSG_HELLO, payload);
+        assertThrows(Codec.DecodeException.class, () -> Codec.decodeMessage(frame));
+    }
+
+    @Test
     @DisplayName("Hash number produces 10-char hex")
     void testHashNumber() {
         String h = Codec.hashNumber(42);

@@ -5,7 +5,6 @@
 // SHA-256 hash, and message dispatch for all 13 message types.
 
 import Foundation
-import ucrt
 
 // MARK: - SHA-256 Implementation
 
@@ -175,6 +174,7 @@ public final class ByteReader {
 
     public init(_ data: [UInt8]) { self.data = data }
     public init(_ data: Data) { self.data = Array(data) }
+    public var remaining: Int { data.count - pos }
 
     public func readU8() throws -> UInt8 {
         guard pos + 1 <= data.count else { throw CodecError.eof("u8 at \(pos)") }
@@ -202,11 +202,18 @@ public final class ByteReader {
     public func readString() throws -> String {
         let ln = Int(try readU32())
         guard pos + ln <= data.count else { throw CodecError.eof("string at \(pos), len=\(ln)") }
-        let s = String(decoding: data[pos..<pos+ln], as: UTF8.self)
+        // PROTOCOL.md §3 requires string payloads to be "valid UTF-8 bytes".
+        // String(decoding:as:UTF8.self) repairs malformed sequences into U+FFFD,
+        // which would accept frames that the Go, C++, Node.js, TypeScript,
+        // Python, Rust and Dart decoders reject, so validate instead.
+        guard let s = String(bytes: data[pos..<pos+ln], encoding: .utf8) else {
+            throw CodecError.invalidUtf8(pos)
+        }
         pos += ln; return s
     }
     public func readKv() throws -> [(String, String)] {
         let count = Int(try readU32())
+        guard count <= remaining / 8 else { throw CodecError.eof("kv count \(count) exceeds remaining payload") }
         var m: [(String, String)] = []
         for _ in 0..<count {
             let k = try readString()
@@ -226,6 +233,7 @@ public enum CodecError: Error, CustomStringConvertible {
     case badVersion(UInt8)
     case truncatedPayload(declared: Int, available: Int)
     case unknownMsgType(UInt8)
+    case invalidUtf8(Int)
 
     public var description: String {
         switch self {
@@ -235,6 +243,7 @@ public enum CodecError: Error, CustomStringConvertible {
         case .badVersion(let v): return String(format: "bad version: 0x%02x", v)
         case .truncatedPayload(let d, let a): return "truncated payload: declared \(d), available \(a)"
         case .unknownMsgType(let v): return String(format: "unknown message type: 0x%02x", v)
+        case .invalidUtf8(let p): return "string payload is not valid UTF-8 at \(p)"
         }
     }
 }
@@ -271,7 +280,7 @@ public func decodeFrame(_ data: [UInt8]) throws -> (MsgType, [UInt8]) {
     }
     let payloadLen = (UInt32(data[4]) << 24) | (UInt32(data[5]) << 16) | (UInt32(data[6]) << 8) | UInt32(data[7])
     let avail = data.count - WsProtocol.headerLen
-    guard Int(payloadLen) <= avail else {
+    guard Int(payloadLen) == avail else {
         throw CodecError.truncatedPayload(declared: Int(payloadLen), available: avail)
     }
     let payload = Array(data[WsProtocol.headerLen..<WsProtocol.headerLen+Int(payloadLen)])
@@ -325,6 +334,7 @@ public func decodeMessage(_ data: [UInt8]) throws -> WsMessage {
     case .echoResponse:
         msg.echoStatus = try r.readI32()
         let count = Int(try r.readU32())
+        guard count <= r.remaining / 13 else { throw CodecError.eof("result count \(count) exceeds remaining payload") }
         var results: [(idx: Int64, type: UInt8, kv: [(String, String)])] = []
         for _ in 0..<count {
             let idx = try r.readI64()
@@ -416,5 +426,4 @@ public func logMsg(_ name: String, _ msg: String) {
     let s = secs % 60
     let dateStr = String(format: "%02d:%02d:%02d", h, m, s)
     print("[\(dateStr)] [INFO] [\(name)] \(msg)")
-    fflush(stdout)
 }

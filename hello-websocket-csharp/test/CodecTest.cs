@@ -67,6 +67,17 @@ public class CodecTest
     }
 
     [Fact]
+    public void TestInvalidUtf8StringRejected()
+    {
+        // HELLO payload declaring a 1-byte string whose only byte is 0xFF, which
+        // is never a valid UTF-8 lead byte. PROTOCOL.md §3 requires "valid UTF-8
+        // bytes", so the decoder must reject it instead of substituting U+FFFD.
+        var payload = new byte[] { 0x00, 0x00, 0x00, 0x01, 0xFF };
+        var frame = Codec.EncodeFrame(Codec.MSG_HELLO, payload);
+        Assert.Throws<Exception>(() => Codec.DecodeMessage(frame));
+    }
+
+    [Fact]
     public void TestBadVersion()
     {
         var data = new byte[] { 0x48, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00 };

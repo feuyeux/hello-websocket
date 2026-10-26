@@ -12,7 +12,8 @@ function main() {
     C.log('ws-client', 'Starting Node.js WebSocket client [version: 1.0.0]');
     C.log('ws-client', `Connecting to ws://${host}:${port}`);
 
-    const url = `ws://${host}:${port}`;
+    const pathName = process.env.WS_PATH || '/ws';
+    const url = `ws://${host}:${port}${pathName}`;
     const userId = `nodejs-client-${crypto.randomUUID().substring(0, 8)}`;
 
     const ws = new WebSocket(url, { headers: { userId } });

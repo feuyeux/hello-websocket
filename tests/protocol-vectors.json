@@ -1,0 +1,6 @@
+{
+  "hello_go": "480101000000000600000002476f",
+  "hello_chinese": "480101000000000a00000006e4bda0e5a5bd",
+  "random_negative_one": "48010a00000000100000000000000001ffffffffffffffff",
+  "invalid_truncated_string": "480101000000000400000008"
+}

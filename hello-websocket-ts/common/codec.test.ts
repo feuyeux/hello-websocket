@@ -165,4 +165,70 @@ describe('Codec', () => {
       expect(decoded.echoResults.length).toBe(0);
     }
   });
+
+  it('Multilingual UTF-8 round-trip', () => {
+    // Multi-byte UTF-8 across several scripts: CJK, Cyrillic, and an emoji
+    // (4-byte sequence), to exercise 2/3/4-byte encodings end to end.
+    for (const text of ['你好世界', 'Привет', '😀🎉', 'こんにちは']) {
+      const orig: Message = { type: MSG_HELLO, clientLanguage: text };
+      const decoded = decodeMessage(encodeMessage(orig));
+      if (decoded.type === MSG_HELLO) {
+        expect(decoded.clientLanguage).toBe(text);
+      }
+    }
+  });
+
+  it('Invalid UTF-8 string rejected', () => {
+    // Single-byte string payload containing 0xFF, which is never a valid
+    // UTF-8 lead byte. PROTOCOL.md §3 requires "valid UTF-8 bytes", so the
+    // decoder must reject this rather than silently substituting U+FFFD.
+    const w = new ByteWriter();
+    w.writeI64(0n);
+    const badPayload = Buffer.concat([
+      w.toBuffer(),
+      Buffer.from([0, 0, 0, 1, 0xFF]), // meta: length=1, byte=0xFF
+      Buffer.from([0, 0, 0, 0]),       // data: empty string
+    ]);
+    const frame = encodeFrame(MSG_ECHO_REQUEST, badPayload);
+    expect(() => decodeMessage(frame)).toThrow(/not valid UTF-8/);
+  });
+
+  it('Signed i64 boundaries round-trip', () => {
+    const boundaries = [-(1n << 63n), -1n, (1n << 63n) - 1n];
+    for (const value of boundaries) {
+      const orig: Message = { type: MSG_RANDOM_NUMBER, randomId: 1n, randomNumber: value };
+      const decoded = decodeMessage(encodeMessage(orig));
+      if (decoded.type === MSG_RANDOM_NUMBER) {
+        expect(decoded.randomNumber).toBe(value);
+      }
+    }
+  });
+
+  it('Protocol vectors match reference bytes', () => {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const fs = require('fs');
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const path = require('path');
+    const vectors = JSON.parse(
+      fs.readFileSync(path.join(__dirname, '..', '..', 'tests', 'protocol-vectors.json'), 'utf-8')
+    );
+
+    const helloGo = decodeMessage(Buffer.from(vectors.hello_go, 'hex'));
+    if (helloGo.type === MSG_HELLO) {
+      expect(helloGo.clientLanguage).toBe('Go');
+    }
+
+    const helloChinese = decodeMessage(Buffer.from(vectors.hello_chinese, 'hex'));
+    if (helloChinese.type === MSG_HELLO) {
+      expect(helloChinese.clientLanguage).toBe('你好');
+    }
+
+    const randomNegOne = decodeMessage(Buffer.from(vectors.random_negative_one, 'hex'));
+    if (randomNegOne.type === MSG_RANDOM_NUMBER) {
+      expect(randomNegOne.randomNumber).toBe(-1n);
+    }
+
+    const truncated = Buffer.from(vectors.invalid_truncated_string, 'hex');
+    expect(() => decodeMessage(truncated)).toThrow();
+  });
 });

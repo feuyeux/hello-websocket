@@ -6,6 +6,13 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-build-push-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -25,7 +32,8 @@ jobs:
         run: |
           cd docker
           chmod +x build_image.sh
-          ./build_image.sh --all
+          echo "IMAGE_TAG=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          IMAGE_TAG="${GITHUB_REF_NAME#v}" ./build_image.sh --all
 
       - name: Push all images
         run: |

@@ -16,6 +16,10 @@ It is the WebSocket analog of `hello-grpc/proto/landing.proto`.
 
 ## 2. Frame Envelope
 
+The canonical endpoint is `ws://<host>:<port>/ws`. Implementations MUST use `/ws`
+by default and MAY override it with `WS_PATH`. The default port is `9898` and MAY
+be overridden with `WS_PORT`.
+
 Every WebSocket binary frame carries exactly one message wrapped in this 8-byte header plus payload:
 
 ```
@@ -24,7 +28,7 @@ Offset  Size  Field        Description
 0       1     MAGIC        Constant 0x48 ('H'). Reject frames that do not start with this.
 1       1     VERSION      Constant 0x01. Parsers MUST check and reject unknown versions.
 2       1     MSG_TYPE     Message type discriminator (see section 4).
-3       1     FLAGS        Reserved for future use. MUST be 0x00. Parsers MUST ignore unknown bits.
+3       1     FLAGS        Reserved for future use. Senders MUST write 0x00. Receivers ignore unknown bits.
 4       4     PAYLOAD_LEN  uint32, big-endian. Number of bytes in the payload (may be 0).
 8       N     PAYLOAD      N = PAYLOAD_LEN bytes, encoded per section 3 and the message definition.
 ```
@@ -32,6 +36,10 @@ Offset  Size  Field        Description
 - Total fixed header = 8 bytes.
 - A frame with MSG_TYPE not in the registry is a protocol error: send ERROR (0x7F) with code 0x02.
 - PAYLOAD_LEN larger than the remaining frame bytes is a protocol error (code 0x03).
+- PAYLOAD_LEN smaller than the remaining frame bytes is also a protocol error: one
+  WebSocket message contains exactly one protocol frame and trailing bytes are forbidden.
+- A WebSocket message MUST NOT exceed 1 MiB.
+  Array and map counts MUST be validated against the bytes remaining before allocation.
 
 ---
 
@@ -47,7 +55,7 @@ All multi-byte integers are big-endian, unsigned unless stated.
 | u64 | 8 bytes, big-endian, unsigned |
 | i32 | 4 bytes, big-endian, two's complement, signed |
 | i64 | 8 bytes, big-endian, two's complement, signed |
-| string | u32 byte-length (big-endian) followed by that many UTF-8 bytes. Empty string = length 0. |
+| string | u32 byte-length (big-endian) followed by that many valid UTF-8 bytes. Empty string = length 0. |
 | kv (map of string to string) | u32 entry-count (big-endian), then for each entry: a string key followed by a string value. Zero entries = count 0. |
 | array of T | u32 element-count (big-endian), then that many T elements laid out consecutively. |
 
@@ -191,7 +199,11 @@ Lifecycle states:
 2. **CONNECTED** — WS handshake done. Server creates the session, logs `[userId] session+`, starts background tasks.
 3. **HELLO → BONJOUR** — Client sends HELLO(client_language). Server logs session id and request time, sends BONJOUR(server_language).
 4. **ACTIVE** — Steady-state bi-directional traffic per section 8.
-5. **TIMEOUT / DISCONNECT** — No PONG within 60s, or DISCONNECT received, or TCP dropped → session removed.
+5. **TIMEOUT / DISCONNECT** — No valid PONG within 60s, or DISCONNECT received, or TCP dropped → session removed.
+
+The PONG timestamp echoes the PING for correlation only. It is untrusted input.
+On a matching PONG, the server records its own monotonic receive time and uses
+that receive time for timeout decisions. Client wall-clock values MUST NOT extend a session.
 
 ---
 
@@ -208,7 +220,7 @@ Lifecycle states:
 | 0x07 | ERR_INTERNAL | Unexpected server-side error |
 
 Recovery rules:
-- **ERR_DECODE / ERR_BAD_MAGIC / ERR_BAD_VERSION**: log and close the connection.
+- **ERR_DECODE / ERR_TRUNCATED_PAYLOAD / ERR_BAD_MAGIC / ERR_BAD_VERSION**: send ERROR when possible, then close the connection with WebSocket status 1002.
 - **ERR_UNKNOWN_MESSAGE_TYPE**: send ERROR frame and continue (forward-compatible).
 - All other errors are application-level; the connection stays open.
 
@@ -216,7 +228,8 @@ Recovery rules:
 
 ## 8. Timing and Intervals
 
-All intervals are constants in each language's common module and are configurable.
+All intervals are constants in each language's common module. Transport address
+settings are configurable through `WS_SERVER`, `WS_PORT`, and `WS_PATH`.
 
 | Flow | Direction | Default | Notes |
 |:-----|:----------|:--------|:------|
@@ -245,3 +258,14 @@ A client sending HELLO with client_language = "Go":
 ```
 
 14 bytes total: 8 header + 6 payload. Every language codec must reproduce this exactly.
+
+---
+
+## 10. Deployment and Security Scope
+
+The repository is an interoperability and teaching project, not a production
+authentication system. The included servers use plain `ws://` and do not provide
+identity verification or authorization. Deployments that cross a trusted network
+boundary MUST terminate TLS at a reverse proxy, enforce an Origin allowlist for
+browser clients, authenticate before upgrade, rate-limit handshakes and messages,
+and treat the `userId` header as untrusted display metadata.

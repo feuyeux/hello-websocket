@@ -15,7 +15,8 @@ from common.codec import *
 
 
 async def run_client(host: str, port: int):
-    url = f"ws://{host}:{port}"
+    path = os.environ.get("WS_PATH", "/ws")
+    url = f"ws://{host}:{port}{path}"
     user_id = f"python-client-{uuid.uuid4().hex[:8]}"
 
     log("ws-client", f"Starting Python WebSocket client [version: 1.0.0]")

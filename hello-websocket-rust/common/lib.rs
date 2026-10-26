@@ -2,9 +2,9 @@
 //!
 //! This library implements the canonical binary protocol defined in PROTOCOL.md.
 
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
-use sha2::{Sha256, Digest};
 
 // ─── Constants ───────────────────────────────────────────────────────────
 
@@ -50,12 +50,24 @@ pub struct ByteWriter {
 }
 
 impl ByteWriter {
-    pub fn new() -> Self { Self { buf: Vec::new() } }
-    pub fn write_u8(&mut self, v: u8) { self.buf.push(v); }
-    pub fn write_u16(&mut self, v: u16) { self.buf.extend_from_slice(&v.to_be_bytes()); }
-    pub fn write_u32(&mut self, v: u32) { self.buf.extend_from_slice(&v.to_be_bytes()); }
-    pub fn write_i32(&mut self, v: i32) { self.buf.extend_from_slice(&v.to_be_bytes()); }
-    pub fn write_i64(&mut self, v: i64) { self.buf.extend_from_slice(&v.to_be_bytes()); }
+    pub fn new() -> Self {
+        Self { buf: Vec::new() }
+    }
+    pub fn write_u8(&mut self, v: u8) {
+        self.buf.push(v);
+    }
+    pub fn write_u16(&mut self, v: u16) {
+        self.buf.extend_from_slice(&v.to_be_bytes());
+    }
+    pub fn write_u32(&mut self, v: u32) {
+        self.buf.extend_from_slice(&v.to_be_bytes());
+    }
+    pub fn write_i32(&mut self, v: i32) {
+        self.buf.extend_from_slice(&v.to_be_bytes());
+    }
+    pub fn write_i64(&mut self, v: i64) {
+        self.buf.extend_from_slice(&v.to_be_bytes());
+    }
     pub fn write_string(&mut self, s: &str) {
         let b = s.as_bytes();
         self.write_u32(b.len() as u32);
@@ -68,7 +80,15 @@ impl ByteWriter {
             self.write_string(v);
         }
     }
-    pub fn data(self) -> Vec<u8> { self.buf }
+    pub fn data(self) -> Vec<u8> {
+        self.buf
+    }
+}
+
+impl Default for ByteWriter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 // ─── ByteReader ─────────────────────────────────────────────────────────
@@ -79,34 +99,66 @@ pub struct ByteReader<'a> {
 }
 
 impl<'a> ByteReader<'a> {
-    pub fn new(data: &'a [u8]) -> Self { Self { data, pos: 0 } }
+    pub fn new(data: &'a [u8]) -> Self {
+        Self { data, pos: 0 }
+    }
+    pub fn remaining(&self) -> usize {
+        self.data.len() - self.pos
+    }
     pub fn read_u8(&mut self) -> Result<u8, String> {
-        if self.pos + 1 > self.data.len() { return Err("unexpected end of data".into()); }
-        let v = self.data[self.pos]; self.pos += 1; Ok(v)
+        if self.pos + 1 > self.data.len() {
+            return Err("unexpected end of data".into());
+        }
+        let v = self.data[self.pos];
+        self.pos += 1;
+        Ok(v)
     }
     pub fn read_u16(&mut self) -> Result<u16, String> {
-        if self.pos + 2 > self.data.len() { return Err("unexpected end of data".into()); }
-        let v = u16::from_be_bytes([self.data[self.pos], self.data[self.pos+1]]); self.pos += 2; Ok(v)
+        if self.pos + 2 > self.data.len() {
+            return Err("unexpected end of data".into());
+        }
+        let v = u16::from_be_bytes([self.data[self.pos], self.data[self.pos + 1]]);
+        self.pos += 2;
+        Ok(v)
     }
     pub fn read_u32(&mut self) -> Result<u32, String> {
-        if self.pos + 4 > self.data.len() { return Err("unexpected end of data".into()); }
-        let v = u32::from_be_bytes(self.data[self.pos..self.pos+4].try_into().unwrap()); self.pos += 4; Ok(v)
+        if self.pos + 4 > self.data.len() {
+            return Err("unexpected end of data".into());
+        }
+        let v = u32::from_be_bytes(self.data[self.pos..self.pos + 4].try_into().unwrap());
+        self.pos += 4;
+        Ok(v)
     }
-    pub fn read_i32(&mut self) -> Result<i32, String> { Ok(self.read_u32()? as i32) }
+    pub fn read_i32(&mut self) -> Result<i32, String> {
+        Ok(self.read_u32()? as i32)
+    }
     pub fn read_i64(&mut self) -> Result<i64, String> {
-        if self.pos + 8 > self.data.len() { return Err("unexpected end of data".into()); }
-        let v = i64::from_be_bytes(self.data[self.pos..self.pos+8].try_into().unwrap()); self.pos += 8; Ok(v)
+        if self.pos + 8 > self.data.len() {
+            return Err("unexpected end of data".into());
+        }
+        let v = i64::from_be_bytes(self.data[self.pos..self.pos + 8].try_into().unwrap());
+        self.pos += 8;
+        Ok(v)
     }
     pub fn read_string(&mut self) -> Result<String, String> {
         let ln = self.read_u32()? as usize;
-        if self.pos + ln > self.data.len() { return Err("string length exceeds data".into()); }
-        let s = String::from_utf8_lossy(&self.data[self.pos..self.pos+ln]).to_string();
-        self.pos += ln; Ok(s)
+        if self.pos + ln > self.data.len() {
+            return Err("string length exceeds data".into());
+        }
+        let s = String::from_utf8(self.data[self.pos..self.pos + ln].to_vec())
+            .map_err(|_| "invalid UTF-8 string".to_string())?;
+        self.pos += ln;
+        Ok(s)
     }
     pub fn read_kv(&mut self) -> Result<HashMap<String, String>, String> {
         let count = self.read_u32()?;
+        if count as usize > self.remaining() / 8 {
+            return Err("kv count exceeds remaining payload".into());
+        }
         let mut m = HashMap::with_capacity(count as usize);
-        for _ in 0..count { m.insert(self.read_string()?, self.read_string()?); }
+        for _ in 0..count {
+            m.insert(self.read_string()?, self.read_string()?);
+        }
         Ok(m)
     }
 }
@@ -115,20 +167,33 @@ impl<'a> ByteReader<'a> {
 
 pub fn encode_frame(msg_type: u8, payload: &[u8]) -> Vec<u8> {
     let mut buf = Vec::with_capacity(HEADER_LEN + payload.len());
-    buf.push(MAGIC); buf.push(VERSION); buf.push(msg_type); buf.push(0x00);
+    buf.push(MAGIC);
+    buf.push(VERSION);
+    buf.push(msg_type);
+    buf.push(0x00);
     buf.extend_from_slice(&(payload.len() as u32).to_be_bytes());
     buf.extend_from_slice(payload);
     buf
 }
 
 pub fn decode_frame(data: &[u8]) -> Result<(u8, &[u8]), String> {
-    if data.len() < HEADER_LEN { return Err(format!("frame too short: {}", data.len())); }
-    if data[0] != MAGIC { return Err(format!("bad magic: 0x{:02x}", data[0])); }
-    if data[1] != VERSION { return Err(format!("bad version: 0x{:02x}", data[1])); }
+    if data.len() < HEADER_LEN {
+        return Err(format!("frame too short: {}", data.len()));
+    }
+    if data[0] != MAGIC {
+        return Err(format!("bad magic: 0x{:02x}", data[0]));
+    }
+    if data[1] != VERSION {
+        return Err(format!("bad version: 0x{:02x}", data[1]));
+    }
     let msg_type = data[2];
     let payload_len = u32::from_be_bytes(data[4..8].try_into().unwrap()) as usize;
-    if payload_len > data.len() - HEADER_LEN {
-        return Err(format!("truncated payload: declared {}, available {}", payload_len, data.len() - HEADER_LEN));
+    if payload_len != data.len() - HEADER_LEN {
+        return Err(format!(
+            "payload length mismatch: declared {}, available {}",
+            payload_len,
+            data.len() - HEADER_LEN
+        ));
     }
     Ok((msg_type, &data[HEADER_LEN..HEADER_LEN + payload_len]))
 }
@@ -137,19 +202,57 @@ pub fn decode_frame(data: &[u8]) -> Result<(u8, &[u8]), String> {
 
 #[derive(Debug)]
 pub enum Message {
-    Hello { client_language: String },
-    Bonjour { server_language: String },
-    EchoRequest { id: i64, meta: String, data: String },
-    EchoResponse { status: i32, results: Vec<EchoResult> },
-    KissRequest { os_name: String, os_version: String, os_release: String, os_architecture: String },
-    KissResponse { language: String, encoding: String, time_zone: String },
-    Ping { timestamp_ms: i64 },
-    Pong { timestamp_ms: i64 },
-    TimeNotification { timestamp_ms: i64, iso8601: String },
-    RandomNumber { id: i64, number: i64 },
-    HashResponse { id: i64, hash_hex: String },
-    Disconnect { reason: String },
-    Error { code: i32, message: String },
+    Hello {
+        client_language: String,
+    },
+    Bonjour {
+        server_language: String,
+    },
+    EchoRequest {
+        id: i64,
+        meta: String,
+        data: String,
+    },
+    EchoResponse {
+        status: i32,
+        results: Vec<EchoResult>,
+    },
+    KissRequest {
+        os_name: String,
+        os_version: String,
+        os_release: String,
+        os_architecture: String,
+    },
+    KissResponse {
+        language: String,
+        encoding: String,
+        time_zone: String,
+    },
+    Ping {
+        timestamp_ms: i64,
+    },
+    Pong {
+        timestamp_ms: i64,
+    },
+    TimeNotification {
+        timestamp_ms: i64,
+        iso8601: String,
+    },
+    RandomNumber {
+        id: i64,
+        number: i64,
+    },
+    HashResponse {
+        id: i64,
+        hash_hex: String,
+    },
+    Disconnect {
+        reason: String,
+    },
+    Error {
+        code: i32,
+        message: String,
+    },
 }
 
 #[derive(Debug)]
@@ -172,41 +275,78 @@ impl Message {
                 encode_frame(MSG_BONJOUR, &w.data())
             }
             Message::EchoRequest { id, meta, data } => {
-                w.write_i64(*id); w.write_string(meta); w.write_string(data);
+                w.write_i64(*id);
+                w.write_string(meta);
+                w.write_string(data);
                 encode_frame(MSG_ECHO_REQUEST, &w.data())
             }
             Message::EchoResponse { status, results } => {
-                w.write_i32(*status); w.write_u32(results.len() as u32);
+                w.write_i32(*status);
+                w.write_u32(results.len() as u32);
                 for r in results {
-                    w.write_i64(r.idx); w.write_u8(r.type_); w.write_kv(&r.kv);
+                    w.write_i64(r.idx);
+                    w.write_u8(r.type_);
+                    w.write_kv(&r.kv);
                 }
                 encode_frame(MSG_ECHO_RESPONSE, &w.data())
             }
-            Message::KissRequest { os_name, os_version, os_release, os_architecture } => {
-                w.write_string(os_name); w.write_string(os_version);
-                w.write_string(os_release); w.write_string(os_architecture);
+            Message::KissRequest {
+                os_name,
+                os_version,
+                os_release,
+                os_architecture,
+            } => {
+                w.write_string(os_name);
+                w.write_string(os_version);
+                w.write_string(os_release);
+                w.write_string(os_architecture);
                 encode_frame(MSG_KISS_REQUEST, &w.data())
             }
-            Message::KissResponse { language, encoding, time_zone } => {
-                w.write_string(language); w.write_string(encoding); w.write_string(time_zone);
+            Message::KissResponse {
+                language,
+                encoding,
+                time_zone,
+            } => {
+                w.write_string(language);
+                w.write_string(encoding);
+                w.write_string(time_zone);
                 encode_frame(MSG_KISS_RESPONSE, &w.data())
             }
-            Message::Ping { timestamp_ms } => { w.write_i64(*timestamp_ms); encode_frame(MSG_PING, &w.data()) }
-            Message::Pong { timestamp_ms } => { w.write_i64(*timestamp_ms); encode_frame(MSG_PONG, &w.data()) }
-            Message::TimeNotification { timestamp_ms, iso8601 } => {
-                w.write_i64(*timestamp_ms); w.write_string(iso8601);
+            Message::Ping { timestamp_ms } => {
+                w.write_i64(*timestamp_ms);
+                encode_frame(MSG_PING, &w.data())
+            }
+            Message::Pong { timestamp_ms } => {
+                w.write_i64(*timestamp_ms);
+                encode_frame(MSG_PONG, &w.data())
+            }
+            Message::TimeNotification {
+                timestamp_ms,
+                iso8601,
+            } => {
+                w.write_i64(*timestamp_ms);
+                w.write_string(iso8601);
                 encode_frame(MSG_TIME_NOTIFICATION, &w.data())
             }
             Message::RandomNumber { id, number } => {
-                w.write_i64(*id); w.write_i64(*number);
+                w.write_i64(*id);
+                w.write_i64(*number);
                 encode_frame(MSG_RANDOM_NUMBER, &w.data())
             }
             Message::HashResponse { id, hash_hex } => {
-                w.write_i64(*id); w.write_string(hash_hex);
+                w.write_i64(*id);
+                w.write_string(hash_hex);
                 encode_frame(MSG_HASH_RESPONSE, &w.data())
             }
-            Message::Disconnect { reason } => { w.write_string(reason); encode_frame(MSG_DISCONNECT, &w.data()) }
-            Message::Error { code, message } => { w.write_i32(*code); w.write_string(message); encode_frame(MSG_ERROR, &w.data()) }
+            Message::Disconnect { reason } => {
+                w.write_string(reason);
+                encode_frame(MSG_DISCONNECT, &w.data())
+            }
+            Message::Error { code, message } => {
+                w.write_i32(*code);
+                w.write_string(message);
+                encode_frame(MSG_ERROR, &w.data())
+            }
         }
     }
 
@@ -214,32 +354,69 @@ impl Message {
         let (msg_type, payload) = decode_frame(data)?;
         let mut r = ByteReader::new(payload);
         match msg_type {
-            MSG_HELLO => Ok(Message::Hello { client_language: r.read_string()? }),
-            MSG_BONJOUR => Ok(Message::Bonjour { server_language: r.read_string()? }),
-            MSG_ECHO_REQUEST => Ok(Message::EchoRequest { id: r.read_i64()?, meta: r.read_string()?, data: r.read_string()? }),
+            MSG_HELLO => Ok(Message::Hello {
+                client_language: r.read_string()?,
+            }),
+            MSG_BONJOUR => Ok(Message::Bonjour {
+                server_language: r.read_string()?,
+            }),
+            MSG_ECHO_REQUEST => Ok(Message::EchoRequest {
+                id: r.read_i64()?,
+                meta: r.read_string()?,
+                data: r.read_string()?,
+            }),
             MSG_ECHO_RESPONSE => {
                 let status = r.read_i32()?;
                 let count = r.read_u32()? as usize;
+                if count > r.remaining() / 13 {
+                    return Err("result count exceeds remaining payload".into());
+                }
                 let mut results = Vec::with_capacity(count);
                 for _ in 0..count {
-                    results.push(EchoResult { idx: r.read_i64()?, type_: r.read_u8()?, kv: r.read_kv()? });
+                    results.push(EchoResult {
+                        idx: r.read_i64()?,
+                        type_: r.read_u8()?,
+                        kv: r.read_kv()?,
+                    });
                 }
                 Ok(Message::EchoResponse { status, results })
             }
             MSG_KISS_REQUEST => Ok(Message::KissRequest {
-                os_name: r.read_string()?, os_version: r.read_string()?,
-                os_release: r.read_string()?, os_architecture: r.read_string()?,
+                os_name: r.read_string()?,
+                os_version: r.read_string()?,
+                os_release: r.read_string()?,
+                os_architecture: r.read_string()?,
             }),
             MSG_KISS_RESPONSE => Ok(Message::KissResponse {
-                language: r.read_string()?, encoding: r.read_string()?, time_zone: r.read_string()?,
+                language: r.read_string()?,
+                encoding: r.read_string()?,
+                time_zone: r.read_string()?,
             }),
-            MSG_PING => Ok(Message::Ping { timestamp_ms: r.read_i64()? }),
-            MSG_PONG => Ok(Message::Pong { timestamp_ms: r.read_i64()? }),
-            MSG_TIME_NOTIFICATION => Ok(Message::TimeNotification { timestamp_ms: r.read_i64()?, iso8601: r.read_string()? }),
-            MSG_RANDOM_NUMBER => Ok(Message::RandomNumber { id: r.read_i64()?, number: r.read_i64()? }),
-            MSG_HASH_RESPONSE => Ok(Message::HashResponse { id: r.read_i64()?, hash_hex: r.read_string()? }),
-            MSG_DISCONNECT => Ok(Message::Disconnect { reason: r.read_string()? }),
-            MSG_ERROR => Ok(Message::Error { code: r.read_i32()?, message: r.read_string()? }),
+            MSG_PING => Ok(Message::Ping {
+                timestamp_ms: r.read_i64()?,
+            }),
+            MSG_PONG => Ok(Message::Pong {
+                timestamp_ms: r.read_i64()?,
+            }),
+            MSG_TIME_NOTIFICATION => Ok(Message::TimeNotification {
+                timestamp_ms: r.read_i64()?,
+                iso8601: r.read_string()?,
+            }),
+            MSG_RANDOM_NUMBER => Ok(Message::RandomNumber {
+                id: r.read_i64()?,
+                number: r.read_i64()?,
+            }),
+            MSG_HASH_RESPONSE => Ok(Message::HashResponse {
+                id: r.read_i64()?,
+                hash_hex: r.read_string()?,
+            }),
+            MSG_DISCONNECT => Ok(Message::Disconnect {
+                reason: r.read_string()?,
+            }),
+            MSG_ERROR => Ok(Message::Error {
+                code: r.read_i32()?,
+                message: r.read_string()?,
+            }),
             _ => Err(format!("unknown message type: 0x{:02x}", msg_type)),
         }
     }
@@ -248,11 +425,17 @@ impl Message {
 // ─── Utility ─────────────────────────────────────────────────────────────
 
 pub fn now_ms() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as i64
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64
 }
 
 pub fn now_iso() -> String {
-    let secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
     let (y, mo, d, h, mi, s) = unix_to_utc(secs);
     format!("{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z", y, mo, d, h, mi, s)
 }
@@ -267,19 +450,32 @@ fn unix_to_utc(secs: u64) -> (u32, u32, u32, u32, u32, u32) {
     let mut d = days;
     loop {
         let dy = if is_leap(y) { 366 } else { 365 };
-        if d < dy { break; }
-        d -= dy; y += 1;
+        if d < dy {
+            break;
+        }
+        d -= dy;
+        y += 1;
     }
-    let months = if is_leap(y) { [31,29,31,30,31,30,31,31,30,31,30,31] } else { [31,28,31,30,31,30,31,31,30,31,30,31] };
+    let months = if is_leap(y) {
+        [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    } else {
+        [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    };
     let mut mo = 1u32;
     for &dm in &months {
-        if d < dm { break; }
-        d -= dm; mo += 1;
+        if d < dm {
+            break;
+        }
+        d -= dm;
+        mo += 1;
     }
     (y, mo, d + 1, h, mi, s)
 }
 
-fn is_leap(y: u32) -> bool { (y % 4 == 0 && y % 100 != 0) || y % 400 == 0 }
+#[allow(clippy::manual_is_multiple_of)]
+fn is_leap(y: u32) -> bool {
+    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+}
 
 pub fn hash_number(num: i64) -> String {
     let mut hasher = Sha256::new();
@@ -291,7 +487,10 @@ pub fn hash_number(num: i64) -> String {
 
 pub fn log(name: &str, msg: &str) {
     let ts = {
-        let secs = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+        let secs = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
         let (y, mo, d, h, mi, s) = unix_to_utc(secs);
         format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02}", y, mo, d, h, mi, s)
     };
@@ -307,25 +506,52 @@ mod tests {
 
     #[test]
     fn test_hello_worked_example() {
-        let msg = Message::Hello { client_language: "Go".into() };
+        let msg = Message::Hello {
+            client_language: "Go".into(),
+        };
         let data = msg.encode();
-        let expected: [u8; 14] = [0x48, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x02, 0x47, 0x6F];
+        let expected: [u8; 14] = [
+            0x48, 0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x02, 0x47, 0x6F,
+        ];
         assert_eq!(data, expected);
     }
 
     #[test]
     fn test_round_trip_all() {
         let messages = vec![
-            Message::Hello { client_language: "Rust".into() },
-            Message::Bonjour { server_language: "Java".into() },
-            Message::EchoRequest { id: 42, meta: "Python".into(), data: "hello".into() },
-            Message::Ping { timestamp_ms: 1700000000000 },
-            Message::Pong { timestamp_ms: 1700000000001 },
-            Message::TimeNotification { timestamp_ms: 1700000000000, iso8601: "2023-11-14T22:13:20Z".into() },
+            Message::Hello {
+                client_language: "Rust".into(),
+            },
+            Message::Bonjour {
+                server_language: "Java".into(),
+            },
+            Message::EchoRequest {
+                id: 42,
+                meta: "Python".into(),
+                data: "hello".into(),
+            },
+            Message::Ping {
+                timestamp_ms: 1700000000000,
+            },
+            Message::Pong {
+                timestamp_ms: 1700000000001,
+            },
+            Message::TimeNotification {
+                timestamp_ms: 1700000000000,
+                iso8601: "2023-11-14T22:13:20Z".into(),
+            },
             Message::RandomNumber { id: 99, number: 42 },
-            Message::HashResponse { id: 99, hash_hex: "7688b6ef5a".into() },
-            Message::Disconnect { reason: "bye".into() },
-            Message::Error { code: ERR_UNKNOWN_MSG_TYPE, message: "bad type".into() },
+            Message::HashResponse {
+                id: 99,
+                hash_hex: "7688b6ef5a".into(),
+            },
+            Message::Disconnect {
+                reason: "bye".into(),
+            },
+            Message::Error {
+                code: ERR_UNKNOWN_MSG_TYPE,
+                message: "bad type".into(),
+            },
         ];
         for orig in messages {
             let decoded = Message::decode(&orig.encode()).unwrap();
@@ -338,7 +564,14 @@ mod tests {
         let mut kv = HashMap::new();
         kv.insert("id".into(), "1".into());
         kv.insert("data".into(), "Hello".into());
-        let orig = Message::EchoResponse { status: 200, results: vec![EchoResult { idx: 123, type_: 0, kv }] };
+        let orig = Message::EchoResponse {
+            status: 200,
+            results: vec![EchoResult {
+                idx: 123,
+                type_: 0,
+                kv,
+            }],
+        };
         let decoded = Message::decode(&orig.encode()).unwrap();
         match decoded {
             Message::EchoResponse { status, results } => {
@@ -352,10 +585,19 @@ mod tests {
 
     #[test]
     fn test_round_trip_kiss() {
-        let orig = Message::KissRequest { os_name: "Linux".into(), os_version: "6.6".into(), os_release: "arch".into(), os_architecture: "AMD64".into() };
+        let orig = Message::KissRequest {
+            os_name: "Linux".into(),
+            os_version: "6.6".into(),
+            os_release: "arch".into(),
+            os_architecture: "AMD64".into(),
+        };
         let decoded = Message::decode(&orig.encode()).unwrap();
         match decoded {
-            Message::KissRequest { os_name, os_architecture, .. } => {
+            Message::KissRequest {
+                os_name,
+                os_architecture,
+                ..
+            } => {
                 assert_eq!(os_name, "Linux");
                 assert_eq!(os_architecture, "AMD64");
             }

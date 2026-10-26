@@ -51,7 +51,7 @@ void handleClient(socket_t clientSock, const std::string& userId) {
     std::string sessionId = std::to_string(nowMs());
     std::string clientLanguage = "unknown";
 
-    std::atomic_flag sendLock = ATOMIC_FLAG_INIT;
+    std::mutex sendMutex;
     std::atomic<bool> active(true);
     std::atomic<int64_t> lastPongTs(nowMs());
 
@@ -59,10 +59,9 @@ void handleClient(socket_t clientSock, const std::string& userId) {
 
     // Helper to send binary frame (thread-safe)
     auto sendFrame = [&](const std::vector<uint8_t>& data) -> bool {
-        while (sendLock.test_and_set(std::memory_order_acquire)) {}
+        std::lock_guard<std::mutex> lock(sendMutex);
         bool result = false;
         if (active) result = wsSendBinary(clientSock, data);
-        sendLock.clear(std::memory_order_release);
         return result;
     };
 
@@ -121,6 +120,7 @@ void handleClient(socket_t clientSock, const std::string& userId) {
             if (nowMs() - lastPongTs.load() > static_cast<int64_t>(SESSION_TIMEOUT_MS)) {
                 log("ws-server", "[" + userId + "] session timeout");
                 active = false;
+                hws_shutdown(clientSock);
                 break;
             }
         }
@@ -129,18 +129,20 @@ void handleClient(socket_t clientSock, const std::string& userId) {
     // Receive loop — wrapped so threads are ALWAYS joined before return
     try {
         while (active) {
-            WSFrame frame = wsRecvFrame(clientSock);
+            WSFrame frame = wsRecvFrame(clientSock, true);
             if (!frame.isValid || frame.isClose) break;
 
             Message msg;
             try {
                 msg = decodeMessage(frame.payload.data(), frame.payload.size());
             } catch (const std::exception& e) {
+                const bool unknown = std::string(e.what()).find("unknown message type") == 0;
                 Message err{};
                 err.type = MSG_ERROR;
-                err.errorCode = ERR_DECODE;
+                err.errorCode = unknown ? ERR_UNKNOWN_MSG_TYPE : ERR_DECODE;
                 err.errorMessage = e.what();
                 sendFrame(err.encode());
+                if (!unknown) active = false;
                 continue;
             }
 
@@ -179,7 +181,7 @@ void handleClient(socket_t clientSock, const std::string& userId) {
                     break;
 
                 case MSG_PONG:
-                    lastPongTs.store(msg.timestampMs);
+                    lastPongTs.store(nowMs());
                     break;
 
                 case MSG_RANDOM_NUMBER:

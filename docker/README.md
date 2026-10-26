@@ -2,6 +2,26 @@
 
 Multi-stage Dockerfiles for all 12 language implementations, plus build/run/push scripts and docker-compose orchestration.
 
+## Container Runtime
+
+`build_image.sh`, `run_container.sh`, `push_image.sh`, and `smoke_test_all.sh` automatically select a runtime:
+
+| Host | Runtime |
+|---|---|
+| Apple-silicon macOS with Apple `container` installed | Apple `container` |
+| Other supported hosts | Docker |
+
+Set `WS_CONTAINER_RUNTIME=docker` or `WS_CONTAINER_RUNTIME=container` to override selection. The `container` runtime is valid only on Apple-silicon macOS. Its system service is started automatically when needed.
+The build script also starts Apple `container builder` when it is not already running.
+
+Before an Apple `container` client can reach a server port published on the Mac, configure this one-time host DNS mapping:
+
+```bash
+sudo container system dns create host.container.internal --localhost 203.0.113.113
+```
+
+The run and smoke-test scripts check this mapping and use `host.container.internal`; Docker continues to use `host.docker.internal`. Docker Compose remains Docker-only because Apple `container` has no Compose-compatible interface.
+
 ## Image Naming
 
 - Server images: `feuyeux/ws_server_<lang>:1.0.0`
@@ -13,18 +33,18 @@ Multi-stage Dockerfiles for all 12 language implementations, plus build/run/push
 
 | Language | Dockerfile |
 |---|---|
-| C++ | `cpp_ws.dockerfile` |
-| Rust | `rust_ws.dockerfile` |
-| Java | `java_ws.dockerfile` |
-| Go | `go_ws.dockerfile` |
-| C# | `csharp_ws.dockerfile` |
-| Python | `python_ws.dockerfile` |
-| Node.js | `node_ws.dockerfile` |
-| Dart | `dart_ws.dockerfile` |
-| Kotlin | `kotlin_ws.dockerfile` |
-| Swift | `swift_ws.dockerfile` |
-| PHP | `php_ws.dockerfile` |
-| TypeScript | `ts_ws.dockerfile` |
+| C++ | `Dockerfile.cpp` |
+| Rust | `Dockerfile.rust` |
+| Java | `Dockerfile.java` |
+| Go | `Dockerfile.go` |
+| C# | `Dockerfile.csharp` |
+| Python | `Dockerfile.python` |
+| Node.js | `Dockerfile.node` |
+| Dart | `Dockerfile.dart` |
+| Kotlin | `Dockerfile.kotlin` |
+| Swift | `Dockerfile.swift` |
+| PHP | `Dockerfile.php` |
+| TypeScript | `Dockerfile.ts` |
 
 Each Dockerfile has three stages:
 1. **build-base** — compiles the common/, server/, and client/ modules
@@ -37,11 +57,28 @@ Each Dockerfile has three stages:
 Build Docker images for one or all languages.
 
 ```bash
-./build_image.sh --all                    # Build all language images
-./build_image.sh --language java          # Build Java server + client
+./build_image.sh --all                          # Build all language images (default: 6 per batch)
+./build_image.sh --language java                # Build Java server + client
 ./build_image.sh --language go --component server  # Build only Go server
-./build_image.sh --all --parallel         # Build all in parallel
+./build_image.sh --all --batch-size 1           # Build all languages fully serially
+./build_image.sh --all --batch-size 0           # Build all languages in one fully-parallel group
+./build_image.sh --all --continue               # Build all, skip past failures, report which failed at the end
+WS_CONTAINER_RUNTIME=container ./build_image.sh --language java --component server
 ```
+
+Options:
+
+| Flag | Description |
+|---|---|
+| `-l, --language LANG` | Build one language. Valid: `cpp`, `rust`, `java`, `go`, `csharp`, `python`, `nodejs`, `dart`, `kotlin`, `swift`, `php`, `ts`. |
+| `-c, --component TYPE` | `server`, `client`, or `both` (default). |
+| `-a, --all` | Build every language. |
+| `-b, --batch-size N` | Languages per concurrent group; groups run serially. Default `6`. `N=0` puts every language in a single group (fully parallel); `N=1` is fully serial. Clamped to the total language count when `N > total`. |
+| `-k, --continue` | Keep going past per-language failures under `--all` and print a failure summary at the end. Without this, the first failure aborts the whole build. |
+| `-v, --verbose` | Verbose shell tracing. |
+| `-h, --help` | Show usage. |
+
+Only `--batch-size` and `--continue` are honored under `--all`; single `--language` builds always run alone and exit 1 on failure.
 
 ### run_container.sh
 Run a server or client container.
@@ -49,6 +86,7 @@ Run a server or client container.
 ```bash
 ./run_container.sh --language java --component server
 ./run_container.sh --language go --component client
+WS_CONTAINER_RUNTIME=docker ./run_container.sh --language java --component server
 ```
 
 ### push_image.sh
@@ -86,6 +124,6 @@ Starts one server + one client for a single language. Available for all 12 langu
 
 | Variable | Default | Description |
 |---|---|---|
-| `WS_SERVER_PORT` | `9898` | Server listen port |
 | `WS_SERVER` | `host.docker.internal` | Server host (client containers) |
-| `WS_PORT` | `9898` | Server port (client containers) |
+| `WS_PORT` | `9898` | Server and client port |
+| `WS_PATH` | `/ws` | WebSocket endpoint path |
