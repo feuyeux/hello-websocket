@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "ws": "^8.22.2"
+    "ws": "^8.23.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
